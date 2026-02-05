@@ -109,6 +109,12 @@ Data is stored in SQLite at `~/.code-ltm/knowledge.db` by default.
 
 Set `CODE_LTM_DB` environment variable to use a custom path.
 
+## Documentation
+
+- [Claude Desktop Integration](docs/claude-desktop.md) - Full setup guide for Claude Desktop
+- [Cursor Integration](docs/cursor.md) - Full setup guide for Cursor IDE
+- [CLAUDE.md Example](docs/CLAUDE.md.example) - Template for teaching agents to use code-ltm in your projects
+
 ## Development
 
 ```bash

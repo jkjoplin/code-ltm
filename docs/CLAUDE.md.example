@@ -1,0 +1,144 @@
+# CLAUDE.md Example for code-ltm
+
+Copy this template to your project's `CLAUDE.md` file and customize it.
+This teaches Claude (and other AI agents) how to use code-ltm effectively in your project.
+
+---
+
+# Project Instructions
+
+## Knowledge Management
+
+This project uses **code-ltm** for persistent knowledge management. You have access to tools that let you record and retrieve learnings across sessions.
+
+### When to record learnings
+
+Record a learning when you:
+- Discover a non-obvious pattern or convention in this codebase
+- Hit a gotcha or edge case that took time to debug
+- Find important context that future sessions should know
+- Complete an investigation and want to preserve the findings
+- Notice a recurring question or confusion point
+
+### Types of learnings
+
+Use the appropriate type when recording:
+
+| Type | When to use |
+|------|-------------|
+| `pattern` | Established conventions, architectural decisions, code patterns |
+| `gotcha` | Tricky issues, common mistakes, non-obvious behaviors |
+| `investigation` | Debugging findings, root cause analyses, performance discoveries |
+| `documentation` | How things work, API behaviors, system descriptions |
+| `tip` | Useful shortcuts, best practices, productivity hints |
+
+### Recording learnings
+
+When you discover something worth remembering:
+
+```
+Use the add_learning tool with:
+- A clear, specific title
+- Detailed content explaining the what and why
+- Appropriate type and scope
+- Relevant tags for searchability
+- File references if applicable
+```
+
+Example:
+```
+Title: "Auth middleware requires session cookie, not Bearer token"
+Type: gotcha
+Scope: project
+Tags: ["auth", "middleware", "cookies"]
+Content: "The /api/* routes use cookie-based sessions, not Bearer tokens.
+The auth middleware in src/middleware/auth.ts checks for a 'session' cookie.
+Attempting to use Authorization headers will fail silently and return 401."
+```
+
+### Searching before starting work
+
+Before implementing something:
+
+1. Search for relevant learnings: `search_learnings` with keywords
+2. List project-specific knowledge: `list_learnings` filtered by scope
+3. Check for related gotchas to avoid known pitfalls
+
+### Scope guidelines
+
+- **project**: Specific to this codebase (default for most learnings here)
+- **cross-project**: Applies to related projects or the organization
+- **global**: Universal knowledge applicable anywhere
+
+### Confidence levels
+
+- **high**: Verified, tested, or documented behavior
+- **medium**: Observed behavior, likely correct
+- **low**: Hypothesis or uncertain observation
+
+## Project-Specific Patterns
+
+<!-- Add your project's patterns here -->
+
+### Code Style
+- [Describe your code style conventions]
+
+### Architecture
+- [Describe your architectural patterns]
+
+### Common Tasks
+- [Describe how to do common tasks]
+
+---
+
+## Example CLAUDE.md for a specific project
+
+Below is a filled-in example for a hypothetical React project:
+
+---
+
+# Project: MyApp Dashboard
+
+## Knowledge Management
+
+This project uses code-ltm. Record learnings as you work, especially:
+- Component patterns and state management conventions
+- API integration gotchas
+- Build/deployment quirks
+
+### Before starting any task
+
+```
+Search code-ltm for: "{relevant keywords for the task}"
+Check for gotchas related to the files you'll modify
+```
+
+## Project Conventions
+
+### Components
+- Functional components only, no classes
+- Use `components/ui/` for primitives, `components/features/` for business logic
+- Colocate tests: `ComponentName.test.tsx` next to `ComponentName.tsx`
+
+### State Management
+- Zustand for global state (stores in `src/stores/`)
+- React Query for server state
+- Local state with useState for component-specific state
+
+### API Calls
+- All API functions in `src/api/`
+- Use the `useQuery` and `useMutation` hooks from `src/hooks/api.ts`
+- Never call fetch directly in components
+
+### Styling
+- Tailwind CSS only, no CSS files
+- Use `cn()` utility for conditional classes
+- Design tokens in `tailwind.config.js`
+
+## Known Gotchas
+
+Record these to code-ltm if not already present:
+
+1. **Auth redirect loop**: The `ProtectedRoute` component must be inside `AuthProvider`
+2. **Build failing on CI**: Node version must be 20.x, not 18.x
+3. **Stale data after mutation**: Always call `queryClient.invalidateQueries()` after mutations

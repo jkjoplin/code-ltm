@@ -27,6 +27,9 @@ tsconfig.json
 # Homebrew
 homebrew/
 
+# Documentation (separate from README)
+docs/
+
 # Misc
 *.log
 .DS_Store
