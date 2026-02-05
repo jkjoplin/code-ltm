@@ -183,7 +183,7 @@ interface FileRef {
 
 ---
 
-### Phase 4: Advanced Features ⏳ IN PROGRESS
+### Phase 4: Advanced Features ✅ COMPLETE
 **Goal**: Polish and power-user features
 
 **Deliverables**:
@@ -191,8 +191,16 @@ interface FileRef {
 - [x] Relationship visualization (graph view - GraphPage, RelationshipGraph, MiniGraph components)
 - [x] Cross-project knowledge promotion (PromotionPage, PromoteButton, PromotionDialog)
 - [x] Conflict detection (similar learnings - SimilarLearnings, DuplicateWarning components)
-- [ ] CLI tool for manual operations
-- [ ] Configuration file support (`.code-ltm.yaml`)
+- [x] CLI tool for manual operations (`src/cli.ts`, `src/cli/commands/`)
+- [x] Configuration file support (`~/.code-ltm/config.yaml`, `src/config/`)
+
+**Files created**:
+- `src/config/schema.ts` - Zod schemas for config validation
+- `src/config/loader.ts` - Config loading with priority merging
+- `src/config/index.ts` - Module exports
+- `src/cli.ts` - CLI entry point (binary: `code-ltm-cli`)
+- `src/cli/output.ts` - Output formatting (table, JSON, YAML)
+- `src/cli/commands/` - Individual command implementations (search, list, get, add, update, delete, link, reembed, export, import, stats, config)
 
 **Note**: Agent suggestion queue removed from scope - using direct write model per design decision
 
