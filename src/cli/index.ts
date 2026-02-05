@@ -11,3 +11,5 @@ export { registerExportCommand } from "./commands/export.js";
 export { registerImportCommand } from "./commands/import.js";
 export { registerStatsCommand } from "./commands/stats.js";
 export { registerConfigCommand } from "./commands/config.js";
+export { registerSeedCommand } from "./commands/seed.js";
+export { registerDigestCommand } from "./commands/digest.js";

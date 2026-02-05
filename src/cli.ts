@@ -16,6 +16,8 @@ import { registerExportCommand } from "./cli/commands/export.js";
 import { registerImportCommand } from "./cli/commands/import.js";
 import { registerStatsCommand } from "./cli/commands/stats.js";
 import { registerConfigCommand } from "./cli/commands/config.js";
+import { registerSeedCommand } from "./cli/commands/seed.js";
+import { registerDigestCommand } from "./cli/commands/digest.js";
 
 // Read package.json version
 const VERSION = "0.1.0";
@@ -69,6 +71,8 @@ registerExportCommand(program);
 registerImportCommand(program);
 registerStatsCommand(program);
 registerConfigCommand(program);
+registerSeedCommand(program);
+registerDigestCommand(program);
 
 // Parse and run
 program.parse();
