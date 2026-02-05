@@ -24,6 +24,9 @@ tsconfig.json
 .vscode/
 .idea/
 
+# Homebrew
+homebrew/
+
 # Misc
 *.log
 .DS_Store
