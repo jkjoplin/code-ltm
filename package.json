@@ -8,6 +8,19 @@
     "code-ltm": "./dist/index.js",
     "code-ltm-cli": "./dist/cli.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jkjoplin/code-ltm.git"
+  },
+  "homepage": "https://github.com/jkjoplin/code-ltm#readme",
+  "bugs": {
+    "url": "https://github.com/jkjoplin/code-ltm/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
@@ -22,7 +35,8 @@
     "api:dev": "tsx watch src/api/index.ts",
     "ui": "cd ui && npm run dev",
     "ui:build": "cd ui && npm run build",
-    "ui:install": "cd ui && npm install"
+    "ui:install": "cd ui && npm install",
+    "prepublishOnly": "npm run build && npm run test:run"
   },
   "keywords": [
     "mcp",

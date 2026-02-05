@@ -4,7 +4,21 @@ A knowledge management system for AI coding agents to record, share, and retriev
 
 ## Installation
 
+### From npm (recommended)
+
 ```bash
+# Global install
+npm install -g code-ltm
+
+# Or run directly with npx
+npx code-ltm
+```
+
+### From source
+
+```bash
+git clone https://github.com/jkjoplin/code-ltm.git
+cd code-ltm
 npm install
 npm run build
 ```
@@ -14,10 +28,31 @@ npm run build
 ### Running the MCP Server
 
 ```bash
+# If installed globally
+code-ltm
+
+# Or with npx
+npx code-ltm
+
+# Or from source
 npm start
 ```
 
-Or for development with auto-reload:
+### CLI Commands
+
+```bash
+# If installed globally
+code-ltm-cli stats
+code-ltm-cli list
+code-ltm-cli search "pattern"
+
+# Or with npx
+npx code-ltm-cli stats
+npx code-ltm-cli list
+npx code-ltm-cli search "pattern"
+```
+
+### Development Mode
 
 ```bash
 npm run dev
@@ -37,8 +72,20 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
 {
   "mcpServers": {
     "code-ltm": {
-      "command": "node",
-      "args": ["/path/to/code-ltm/dist/index.js"]
+      "command": "npx",
+      "args": ["code-ltm"]
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "code-ltm": {
+      "command": "code-ltm"
     }
   }
 }

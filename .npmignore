@@ -1,0 +1,29 @@
+# Source files (we publish dist/)
+src/
+
+# UI application
+ui/
+
+# Tests
+*.test.ts
+__tests__/
+
+# Development config
+.claude/
+PLAN.md
+vitest.config.ts
+eslint.config.js
+.prettierrc
+tsconfig.json
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.log
+.DS_Store
