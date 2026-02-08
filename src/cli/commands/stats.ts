@@ -31,6 +31,8 @@ export function registerStatsCommand(program: Command): void {
           "investigation",
           "documentation",
           "tip",
+          "suggestion",
+          "rule",
         ];
         const scopes: Scope[] = ["project", "cross-project", "global"];
 

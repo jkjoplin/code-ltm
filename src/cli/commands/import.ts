@@ -6,7 +6,7 @@ import { LearningRepository } from "../../db/repository.js";
 import { EmbeddingService } from "../../embeddings/index.js";
 import { getConfig } from "../../config/index.js";
 import { printSuccess, printError, printInfo, printWarning } from "../output.js";
-import type { Learning, AddLearningInput } from "../../types.js";
+import type { Learning } from "../../types.js";
 
 interface ExportData {
   version: string;
@@ -65,6 +65,8 @@ export function registerImportCommand(program: Command): void {
         let imported = 0;
         let skipped = 0;
         let errors = 0;
+        const idMap = new Map<string, string>();
+        const relationSyncIds = new Set<string>();
 
         const spinner = ora("Importing...").start();
 
@@ -75,11 +77,12 @@ export function registerImportCommand(program: Command): void {
             if (existing) {
               if (opts.skipExisting) {
                 skipped++;
+                idMap.set(learning.id, existing.id);
                 continue;
               }
               // Update existing if not skipping
               if (!opts.dryRun) {
-                repo.update(
+                const result = repo.upsert(
                   {
                     id: learning.id,
                     title: learning.title,
@@ -88,18 +91,30 @@ export function registerImportCommand(program: Command): void {
                     scope: learning.scope,
                     tags: learning.tags,
                     file_references: learning.file_references,
-                    related_ids: learning.related_ids,
+                    related_ids: [],
                     confidence: learning.confidence,
                     project_path: learning.project_path ?? null,
+                    created_by: learning.created_by ?? "cli-import",
+                    created_at: learning.created_at,
+                    updated_at: learning.updated_at,
+                    version: learning.version,
+                    deprecated: learning.deprecated ?? false,
+                    deprecated_reason: learning.deprecated_reason ?? null,
+                    deprecated_at: learning.deprecated_at ?? null,
+                    applies_to: learning.applies_to ?? null,
+                    if_exists: "update",
                   },
                   "cli-import"
                 );
+                idMap.set(learning.id, result.learning.id);
+                relationSyncIds.add(learning.id);
               }
               imported++;
             } else {
               // Create new
               if (!opts.dryRun) {
-                const input: AddLearningInput = {
+                const result = repo.upsert({
+                  id: learning.id,
                   title: learning.title,
                   content: learning.content,
                   type: learning.type,
@@ -108,10 +123,19 @@ export function registerImportCommand(program: Command): void {
                   file_references: learning.file_references,
                   related_ids: [], // Skip related_ids on first pass to avoid missing refs
                   confidence: learning.confidence,
-                  project_path: learning.project_path,
+                  project_path: learning.project_path ?? null,
                   created_by: learning.created_by ?? "cli-import",
-                };
-                repo.add(input);
+                  created_at: learning.created_at,
+                  updated_at: learning.updated_at,
+                  version: learning.version,
+                  deprecated: learning.deprecated ?? false,
+                  deprecated_reason: learning.deprecated_reason ?? null,
+                  deprecated_at: learning.deprecated_at ?? null,
+                  applies_to: learning.applies_to ?? null,
+                  if_exists: "error",
+                });
+                idMap.set(learning.id, result.learning.id);
+                relationSyncIds.add(learning.id);
               }
               imported++;
             }
@@ -129,14 +153,40 @@ export function registerImportCommand(program: Command): void {
         if (!opts.dryRun && data.learnings.length > 0) {
           spinner.text = "Restoring relationships...";
           for (const learning of data.learnings) {
+            if (!relationSyncIds.has(learning.id)) continue;
+            const sourceId = idMap.get(learning.id) ?? learning.id;
+            const source = repo.get(sourceId);
+            if (!source) continue;
+
             if (learning.related_ids && learning.related_ids.length > 0) {
-              for (const relatedId of learning.related_ids) {
-                try {
-                  repo.linkLearnings(learning.id, relatedId);
-                } catch {
-                  // Ignore link errors (target may not exist)
-                }
-              }
+              const mappedRelated = learning.related_ids
+                .map((relatedId) => idMap.get(relatedId))
+                .filter((relatedId): relatedId is string => !!relatedId);
+
+              repo.upsert(
+                {
+                  id: source.id,
+                  title: source.title,
+                  content: source.content,
+                  type: source.type,
+                  scope: source.scope,
+                  project_path: source.project_path ?? null,
+                  tags: source.tags,
+                  file_references: source.file_references,
+                  related_ids: mappedRelated,
+                  confidence: source.confidence,
+                  created_by: source.created_by,
+                  created_at: source.created_at,
+                  updated_at: source.updated_at,
+                  version: source.version,
+                  deprecated: source.deprecated,
+                  deprecated_reason: source.deprecated_reason,
+                  deprecated_at: source.deprecated_at,
+                  applies_to: source.applies_to,
+                  if_exists: "update",
+                },
+                "cli-import"
+              );
             }
           }
         }

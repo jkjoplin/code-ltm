@@ -44,6 +44,10 @@ export async function handleSearchLearnings(
       include_deprecated: input.include_deprecated,
     });
 
+    if (learnings.length > 0) {
+      repo.recordAccess(learnings.map((l) => l.id));
+    }
+
     // If include_content is true, fetch full content
     if (input.include_content) {
       const fullLearnings = learnings.map((summary) => {

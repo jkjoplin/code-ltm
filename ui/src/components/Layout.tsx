@@ -48,6 +48,16 @@ export default function Layout({ children }: LayoutProps) {
                 Promote
               </Link>
               <Link
+                to="/autonomy"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  location.pathname === "/autonomy"
+                    ? "bg-gray-100 text-gray-900"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                }`}
+              >
+                Autonomy
+              </Link>
+              <Link
                 to="/settings"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${
                   location.pathname === "/settings"

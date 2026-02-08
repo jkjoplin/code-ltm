@@ -2,6 +2,13 @@ import { useState } from "react";
 import { useStats } from "../hooks/useLearnings";
 import { api, type Learning } from "../api/client";
 
+function labelize(value: string): string {
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function SettingsPage() {
   const { data: stats, isLoading: statsLoading } = useStats();
   const [exporting, setExporting] = useState(false);
@@ -125,6 +132,55 @@ export default function SettingsPage() {
           </dl>
         ) : null}
       </section>
+
+      {(stats?.byType || stats?.byScope) && (
+        <section className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Distribution</h2>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">By Type</h3>
+              {stats?.byType && Object.keys(stats.byType).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(stats.byType)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([type, count]) => (
+                      <div
+                        key={type}
+                        className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm"
+                      >
+                        <span className="text-gray-700">{labelize(type)}</span>
+                        <span className="font-medium text-gray-900">{count}</span>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No type data available.</p>
+              )}
+            </div>
+
+            <div>
+              <h3 className="text-sm font-medium text-gray-700 mb-2">By Scope</h3>
+              {stats?.byScope && Object.keys(stats.byScope).length > 0 ? (
+                <div className="space-y-2">
+                  {Object.entries(stats.byScope)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([scope, count]) => (
+                      <div
+                        key={scope}
+                        className="flex items-center justify-between rounded border border-gray-200 px-3 py-2 text-sm"
+                      >
+                        <span className="text-gray-700">{labelize(scope)}</span>
+                        <span className="font-medium text-gray-900">{count}</span>
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No scope data available.</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Export */}
       <section className="bg-white rounded-lg border border-gray-200 p-6 mb-6">

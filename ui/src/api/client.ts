@@ -10,6 +10,8 @@ export type LearningType =
 export type Scope = "project" | "cross-project" | "global";
 export type Confidence = "low" | "medium" | "high";
 export type SearchMode = "keyword" | "semantic" | "hybrid";
+export type FeedbackOutcome = "used" | "helpful" | "dismissed";
+export type FeedbackSource = "agent" | "user" | "auto";
 
 export interface FileRef {
   path: string;
@@ -101,6 +103,8 @@ export interface Stats {
   total: number;
   embedded: number;
   semantic_available: boolean;
+  byType?: Record<string, number>;
+  byScope?: Record<string, number>;
 }
 
 export interface ExportData {
@@ -115,6 +119,48 @@ export interface ImportResult {
   skipped: number;
   errors?: Array<{ id: string; error: string }>;
   total: number;
+}
+
+export interface QualityMetrics {
+  learning_id: string;
+  used_count: number;
+  helpful_count: number;
+  dismissed_count: number;
+  usefulness_score: number;
+  updated_at: string;
+}
+
+export interface RunAutonomyInput {
+  project_path?: string;
+  sources?: Array<"git" | "tests" | "pr">;
+  maintenance?: boolean;
+  dry_run?: boolean;
+}
+
+export interface AutonomyRunResult {
+  run_id: string;
+  status: "success" | "partial" | "failed";
+  dry_run: boolean;
+  maintenance: boolean;
+  collected_count: number;
+  inserted_count: number;
+  skipped_count: number;
+  notes: string[];
+}
+
+export interface AutonomyRun {
+  id: string;
+  project_path?: string | null;
+  sources_json: string;
+  maintenance: boolean;
+  dry_run: boolean;
+  status: "success" | "partial" | "failed";
+  collected_count: number;
+  inserted_count: number;
+  skipped_count: number;
+  notes?: string | null;
+  started_at: string;
+  finished_at: string;
 }
 
 // Version history types
@@ -243,6 +289,21 @@ export const api = {
     return handleResponse(response);
   },
 
+  async upsertLearning(input: Partial<CreateLearningInput> & {
+    id?: string;
+    title: string;
+    content: string;
+    type: LearningType;
+    scope: Scope;
+  }): Promise<{ learning: Learning; created: boolean; skipped: boolean }> {
+    const response = await fetch(`${API_BASE}/learnings/upsert`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handleResponse(response);
+  },
+
   // Update learning
   async updateLearning(id: string, input: UpdateLearningInput): Promise<Learning> {
     const response = await fetch(`${API_BASE}/learnings/${id}`, {
@@ -258,6 +319,37 @@ export const api = {
     const response = await fetch(`${API_BASE}/learnings/${id}`, {
       method: "DELETE",
     });
+    return handleResponse(response);
+  },
+
+  async recordFeedback(
+    id: string,
+    outcome: FeedbackOutcome,
+    source: FeedbackSource = "agent",
+    context?: string
+  ): Promise<{ success: boolean; metrics: QualityMetrics }> {
+    const response = await fetch(`${API_BASE}/learnings/${id}/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outcome, source, context }),
+    });
+    return handleResponse(response);
+  },
+
+  async runAutonomyCycle(input: RunAutonomyInput): Promise<AutonomyRunResult> {
+    const response = await fetch(`${API_BASE}/autonomy/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handleResponse(response);
+  },
+
+  async getAutonomyRuns(
+    limit = 50
+  ): Promise<{ runs: AutonomyRun[]; count: number }> {
+    const params = new URLSearchParams({ limit: String(limit) });
+    const response = await fetch(`${API_BASE}/autonomy/runs?${params}`);
     return handleResponse(response);
   },
 

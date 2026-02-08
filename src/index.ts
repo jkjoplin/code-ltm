@@ -39,6 +39,12 @@ import {
   handleRecall,
   getDigestTool,
   handleGetDigest,
+  upsertLearningTool,
+  handleUpsertLearning,
+  recordLearningFeedbackTool,
+  handleRecordLearningFeedback,
+  runAutonomyCycleTool,
+  handleRunAutonomyCycle,
 } from "./tools/index.js";
 
 // Load configuration first
@@ -83,6 +89,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       getContextTool,
       recallTool,
       getDigestTool,
+      upsertLearningTool,
+      recordLearningFeedbackTool,
+      runAutonomyCycleTool,
     ],
   };
 });
@@ -121,6 +130,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return handleRecall(repo, args);
       case "get_digest":
         return handleGetDigest(repo, args);
+      case "upsert_learning":
+        return handleUpsertLearning(repo, args);
+      case "record_learning_feedback":
+        return handleRecordLearningFeedback(repo, args);
+      case "run_autonomy_cycle":
+        return handleRunAutonomyCycle(repo, args);
       default:
         return {
           content: [
@@ -150,6 +165,14 @@ async function main() {
   // Initialize embedding service before starting
   await embeddingService.initialize();
   repo.setEmbeddingService(embeddingService);
+  const journalMode = db.pragma("journal_mode", { simple: true });
+  const foreignKeys = db.pragma("foreign_keys", { simple: true });
+  console.error(
+    `DB self-check: journal_mode=${String(journalMode)}, foreign_keys=${String(foreignKeys)}`
+  );
+  console.error(
+    `Embedding self-check: available=${embeddingService.isAvailable()} provider=${embeddingService.getActiveProvider() ?? "none"}`
+  );
 
   const transport = new StdioServerTransport();
   await server.connect(transport);

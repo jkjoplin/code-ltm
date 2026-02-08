@@ -118,12 +118,73 @@ function createTestDb(): Database.Database {
       change_type TEXT NOT NULL CHECK (change_type IN ('create', 'update', 'delete')),
       FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS learning_feedback (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      learning_id TEXT NOT NULL,
+      outcome TEXT NOT NULL CHECK (outcome IN ('used', 'helpful', 'dismissed')),
+      source TEXT NOT NULL CHECK (source IN ('agent', 'user', 'auto')),
+      context TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS learning_quality_metrics (
+      learning_id TEXT PRIMARY KEY,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      helpful_count INTEGER NOT NULL DEFAULT 0,
+      dismissed_count INTEGER NOT NULL DEFAULT 0,
+      usefulness_score REAL NOT NULL DEFAULT 0.5,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS autonomy_runs (
+      id TEXT PRIMARY KEY,
+      project_path TEXT,
+      sources_json TEXT NOT NULL,
+      maintenance INTEGER NOT NULL DEFAULT 0,
+      dry_run INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL,
+      collected_count INTEGER NOT NULL DEFAULT 0,
+      inserted_count INTEGER NOT NULL DEFAULT 0,
+      skipped_count INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      started_at TEXT NOT NULL,
+      finished_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS autonomy_candidates (
+      id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      source TEXT NOT NULL,
+      fingerprint TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      learning_id TEXT,
+      payload_json TEXT NOT NULL,
+      reason TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (run_id) REFERENCES autonomy_runs(id) ON DELETE CASCADE,
+      FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE SET NULL
+    );
   `);
 
   return db;
 }
 
-describe("LearningRepository", () => {
+const sqliteAvailable = (() => {
+  try {
+    const probe = new Database(":memory:");
+    probe.close();
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+const describeRepo = sqliteAvailable ? describe : describe.skip;
+
+describeRepo("LearningRepository", () => {
   let db: Database.Database;
   let repo: LearningRepository;
 
@@ -383,6 +444,69 @@ describe("LearningRepository", () => {
         "00000000-0000-0000-0000-000000000000"
       );
       expect(success).toBe(false);
+    });
+  });
+
+  describe("upsert", () => {
+    it("preserves explicit id and metadata for trusted imports", () => {
+      const trustedId = "11111111-1111-4111-8111-111111111111";
+      const trustedCreatedAt = "2024-01-01T00:00:00.000Z";
+      const trustedUpdatedAt = "2024-01-02T00:00:00.000Z";
+
+      const result = repo.upsert({
+        id: trustedId,
+        title: "Trusted Import",
+        content: "Imported content",
+        type: "documentation",
+        scope: "project",
+        project_path: "/tmp/test",
+        tags: ["import"],
+        file_references: [],
+        related_ids: [],
+        confidence: "high",
+        created_by: "importer",
+        created_at: trustedCreatedAt,
+        updated_at: trustedUpdatedAt,
+        version: 7,
+        if_exists: "error",
+      });
+
+      expect(result.created).toBe(true);
+      expect(result.learning.id).toBe(trustedId);
+      expect(result.learning.created_at).toBe(trustedCreatedAt);
+      expect(result.learning.updated_at).toBe(trustedUpdatedAt);
+      expect(result.learning.version).toBe(7);
+    });
+  });
+
+  describe("relation integrity", () => {
+    it("removes stale reverse links when related_ids are replaced", () => {
+      const a = repo.add({ ...sampleInput, title: "A" });
+      const b = repo.add({ ...sampleInput, title: "B" });
+      const c = repo.add({ ...sampleInput, title: "C" });
+
+      repo.update({ id: a.id, related_ids: [b.id] });
+      repo.update({ id: a.id, related_ids: [c.id] });
+
+      const updatedB = repo.get(b.id);
+      const updatedC = repo.get(c.id);
+      expect(updatedB?.related_ids.includes(a.id)).toBe(false);
+      expect(updatedC?.related_ids).toContain(a.id);
+    });
+  });
+
+  describe("feedback metrics", () => {
+    it("updates quality metrics from feedback events", () => {
+      const learning = repo.add(sampleInput);
+      const metrics1 = repo.recordFeedback(learning.id, "used", "agent");
+      const metrics2 = repo.recordFeedback(learning.id, "helpful", "user");
+      const metrics3 = repo.recordFeedback(learning.id, "dismissed", "auto");
+
+      expect(metrics1?.used_count).toBe(1);
+      expect(metrics2?.helpful_count).toBe(1);
+      expect(metrics3?.dismissed_count).toBe(1);
+      expect((metrics3?.usefulness_score ?? 0) >= 0).toBe(true);
+      expect((metrics3?.usefulness_score ?? 1) <= 1).toBe(true);
     });
   });
 });

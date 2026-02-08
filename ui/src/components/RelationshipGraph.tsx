@@ -17,6 +17,8 @@ const TYPE_COLORS: Record<LearningType, string> = {
   tip: "#16a34a", // green
   documentation: "#2563eb", // blue
   investigation: "#ca8a04", // yellow
+  suggestion: "#0f766e", // teal
+  rule: "#b45309", // amber
 };
 
 const SCOPE_SIZES: Record<Scope, number> = {

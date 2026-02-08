@@ -37,6 +37,10 @@ export async function handleRecall(
     max_results: 20, // fetch more, we'll trim by budget
   });
 
+  if (learnings.length > 0) {
+    repo.recordAccess(learnings.map((l) => l.id));
+  }
+
   if (learnings.length === 0) {
     return {
       content: [

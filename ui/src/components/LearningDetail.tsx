@@ -6,6 +6,7 @@ import SimilarLearnings from "./SimilarLearnings";
 import PromoteButton from "./PromoteButton";
 import PromotionDialog from "./PromotionDialog";
 import MiniGraph from "./MiniGraph";
+import FeedbackButtons from "./FeedbackButtons";
 import { useVersionHistory } from "../hooks/useVersions";
 import { usePromote } from "../hooks/usePromotion";
 
@@ -19,11 +20,13 @@ interface LearningDetailProps {
 type Tab = "content" | "history";
 
 const TYPE_COLORS: Record<string, string> = {
+  rule: "bg-amber-100 text-amber-800",
   pattern: "bg-purple-100 text-purple-800",
   gotcha: "bg-red-100 text-red-800",
   tip: "bg-green-100 text-green-800",
   documentation: "bg-blue-100 text-blue-800",
   investigation: "bg-yellow-100 text-yellow-800",
+  suggestion: "bg-teal-100 text-teal-800",
 };
 
 const SCOPE_COLORS: Record<string, string> = {
@@ -101,6 +104,13 @@ export default function LearningDetail({
               Delete
             </button>
           </div>
+        </div>
+
+        <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <span className="text-sm text-gray-600">
+            Feedback improves ranking for future agent recalls.
+          </span>
+          <FeedbackButtons learningId={learning.id} />
         </div>
 
         {/* Tags */}

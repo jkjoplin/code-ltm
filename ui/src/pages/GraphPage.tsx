@@ -6,11 +6,13 @@ import type { Scope, LearningType } from "../api/client";
 
 const TYPES: Array<{ value: LearningType | "all"; label: string }> = [
   { value: "all", label: "All Types" },
+  { value: "rule", label: "Rule" },
   { value: "gotcha", label: "Gotcha" },
   { value: "pattern", label: "Pattern" },
   { value: "tip", label: "Tip" },
   { value: "documentation", label: "Documentation" },
   { value: "investigation", label: "Investigation" },
+  { value: "suggestion", label: "Suggestion" },
 ];
 
 const SCOPES: Array<{ value: Scope | "all"; label: string }> = [
@@ -193,6 +195,14 @@ export default function GraphPage() {
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-full bg-yellow-600"></span>
                 <span className="text-xs">Investigation</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-teal-600"></span>
+                <span className="text-xs">Suggestion</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-amber-600"></span>
+                <span className="text-xs">Rule</span>
               </span>
             </div>
           </div>

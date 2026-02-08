@@ -50,6 +50,10 @@ export async function handleGetContext(
     max_results: input.max_results,
   });
 
+  if (learnings.length > 0) {
+    repo.recordAccess(learnings.map((l) => l.id));
+  }
+
   const result = input.compact
     ? { count: learnings.length, learnings: learnings.map(toCompactLearning) }
     : { count: learnings.length, learnings };

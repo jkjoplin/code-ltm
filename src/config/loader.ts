@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import yaml from "yaml";
 import {
   ConfigSchema,
   PartialConfigSchema,
@@ -41,9 +42,6 @@ export function setConfigPath(customPath: string): void {
  * Simple YAML parser for our config format (no external dependency needed for basic YAML)
  */
 function parseYaml(content: string): Record<string, unknown> {
-  // Dynamic import for yaml package
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const yaml = require("yaml");
   return yaml.parse(content) ?? {};
 }
 
@@ -124,6 +122,18 @@ function loadConfigFromEnv(): PartialConfig {
   if (process.env.CODE_LTM_SCOPE) {
     config.cli = config.cli ?? {};
     config.cli.default_scope = process.env.CODE_LTM_SCOPE as Scope;
+  }
+
+  if (process.env.CODE_LTM_AUTONOMY_ENABLED) {
+    config.autonomy = config.autonomy ?? {};
+    config.autonomy.enabled =
+      process.env.CODE_LTM_AUTONOMY_ENABLED.toLowerCase() === "true";
+  }
+
+  if (process.env.CODE_LTM_AUTONOMY_DRY_RUN_DEFAULT) {
+    config.autonomy = config.autonomy ?? {};
+    config.autonomy.dry_run_default =
+      process.env.CODE_LTM_AUTONOMY_DRY_RUN_DEFAULT.toLowerCase() === "true";
   }
 
   return config;
@@ -285,6 +295,12 @@ cli:
   default_limit: 20
   default_scope: null  # null | project | cross-project | global
   output_format: table  # table | json | yaml
+
+# Autonomy defaults
+autonomy:
+  enabled: false
+  dry_run_default: true
+  schedule_hours: 6
 `;
 
   fs.writeFileSync(configPath, defaultYaml, "utf-8");

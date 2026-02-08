@@ -12,3 +12,12 @@ export { addRuleTool, handleAddRule } from "./add-rule.js";
 export { getContextTool, handleGetContext } from "./get-context.js";
 export { recallTool, handleRecall } from "./recall.js";
 export { getDigestTool, handleGetDigest } from "./get-digest.js";
+export { upsertLearningTool, handleUpsertLearning } from "./upsert-learning.js";
+export {
+  recordLearningFeedbackTool,
+  handleRecordLearningFeedback,
+} from "./record-learning-feedback.js";
+export {
+  runAutonomyCycleTool,
+  handleRunAutonomyCycle,
+} from "./run-autonomy-cycle.js";

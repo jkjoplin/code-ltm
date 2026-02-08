@@ -17,6 +17,12 @@ import type {
   RelationshipGraph,
   GraphNode,
   GraphEdge,
+  UpsertIfExists,
+  FeedbackOutcome,
+  FeedbackSource,
+  AutonomyRun,
+  Confidence,
+  AutonomySource,
 } from "../types.js";
 import type { EmbeddingService } from "../embeddings/index.js";
 
@@ -46,6 +52,61 @@ export interface SearchOptions {
 export interface SemanticSearchResult {
   id: string;
   distance: number;
+}
+
+export interface UpsertLearningInputInternal {
+  id?: string;
+  title: string;
+  content: string;
+  type: LearningType;
+  scope: Scope;
+  project_path?: string | null;
+  tags: string[];
+  file_references: FileRef[];
+  related_ids: string[];
+  confidence: Confidence;
+  created_by: string;
+  applies_to?: string[] | null;
+  created_at?: string;
+  updated_at?: string;
+  version?: number;
+  deprecated?: boolean;
+  deprecated_reason?: string | null;
+  deprecated_at?: string | null;
+  if_exists?: UpsertIfExists;
+}
+
+export interface FeedbackEvent {
+  id: number;
+  learning_id: string;
+  outcome: FeedbackOutcome;
+  source: FeedbackSource;
+  context: string | null;
+  created_at: string;
+}
+
+export interface QualityMetrics {
+  learning_id: string;
+  used_count: number;
+  helpful_count: number;
+  dismissed_count: number;
+  usefulness_score: number;
+  updated_at: string;
+}
+
+export interface AutonomyRunInput {
+  id?: string;
+  project_path?: string;
+  sources: AutonomySource[];
+  maintenance: boolean;
+  dry_run: boolean;
+  status: "success" | "partial" | "failed";
+  collected_count: number;
+  inserted_count: number;
+  skipped_count: number;
+  notes?: string;
+  started_at: string;
+  finished_at: string;
 }
 
 export class LearningRepository {
@@ -102,10 +163,6 @@ export class LearningRepository {
       VALUES (?, ?, ?, ?, ?)
     `);
 
-    const insertRelation = this.db.prepare(`
-      INSERT OR IGNORE INTO learning_relations (source_id, target_id) VALUES (?, ?)
-    `);
-
     this.db.transaction(() => {
       insertLearning.run(
         learning.id,
@@ -135,11 +192,7 @@ export class LearningRepository {
           ref.snippet ?? null
         );
       }
-
-      for (const relatedId of learning.related_ids) {
-        insertRelation.run(learning.id, relatedId);
-        insertRelation.run(relatedId, learning.id); // Bidirectional
-      }
+      this.syncRelationsForLearning(learning.id, learning.related_ids);
     })();
 
     // Save initial version for history
@@ -149,6 +202,158 @@ export class LearningRepository {
     this.generateEmbeddingAsync(learning.id, learning.title, learning.content);
 
     return learning;
+  }
+
+  upsert(
+    input: UpsertLearningInputInternal,
+    changedBy = "system"
+  ): { learning: Learning; created: boolean; skipped: boolean } {
+    const targetId = input.id ?? uuidv4();
+    const existing = this.get(targetId);
+    const ifExists = input.if_exists ?? "update";
+    const now = new Date().toISOString();
+
+    if (existing && ifExists === "skip") {
+      return { learning: existing, created: false, skipped: true };
+    }
+
+    if (existing && ifExists === "error") {
+      throw new Error(`Learning with id "${targetId}" already exists`);
+    }
+
+    const learning: Learning = existing
+      ? {
+          id: targetId,
+          title: input.title,
+          content: input.content,
+          type: input.type,
+          scope: input.scope,
+          project_path: input.project_path ?? undefined,
+          tags: input.tags,
+          file_references: input.file_references,
+          related_ids: input.related_ids,
+          confidence: input.confidence,
+          created_at: input.created_at ?? existing.created_at,
+          updated_at: input.updated_at ?? now,
+          created_by: input.created_by || existing.created_by,
+          version:
+            input.version ?? (input.updated_at || input.created_at ? existing.version : existing.version + 1),
+          deprecated: input.deprecated ?? existing.deprecated,
+          deprecated_reason: input.deprecated_reason ?? existing.deprecated_reason ?? null,
+          deprecated_at: input.deprecated_at ?? existing.deprecated_at ?? null,
+          access_count: existing.access_count,
+          last_accessed_at: existing.last_accessed_at,
+          applies_to: input.applies_to ?? null,
+        }
+      : {
+          id: targetId,
+          title: input.title,
+          content: input.content,
+          type: input.type,
+          scope: input.scope,
+          project_path: input.project_path ?? undefined,
+          tags: input.tags,
+          file_references: input.file_references,
+          related_ids: input.related_ids,
+          confidence: input.confidence,
+          created_at: input.created_at ?? now,
+          updated_at: input.updated_at ?? now,
+          created_by: input.created_by,
+          version: input.version ?? 1,
+          deprecated: input.deprecated ?? false,
+          deprecated_reason: input.deprecated_reason ?? null,
+          deprecated_at: input.deprecated_at ?? null,
+          access_count: 0,
+          last_accessed_at: null,
+          applies_to: input.applies_to ?? null,
+        };
+
+    this.db.transaction(() => {
+      if (existing) {
+        this.saveVersion(targetId, "update", changedBy);
+      }
+
+      this.db
+        .prepare(
+          `INSERT INTO learnings
+            (id, title, content, type, scope, project_path, confidence, created_at, updated_at, created_by, version,
+             deprecated, deprecated_reason, deprecated_at, access_count, last_accessed_at, applies_to)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON CONFLICT(id) DO UPDATE SET
+             title = excluded.title,
+             content = excluded.content,
+             type = excluded.type,
+             scope = excluded.scope,
+             project_path = excluded.project_path,
+             confidence = excluded.confidence,
+             created_at = excluded.created_at,
+             updated_at = excluded.updated_at,
+             created_by = excluded.created_by,
+             version = excluded.version,
+             deprecated = excluded.deprecated,
+             deprecated_reason = excluded.deprecated_reason,
+             deprecated_at = excluded.deprecated_at,
+             access_count = excluded.access_count,
+             last_accessed_at = excluded.last_accessed_at,
+             applies_to = excluded.applies_to`
+        )
+        .run(
+          learning.id,
+          learning.title,
+          learning.content,
+          learning.type,
+          learning.scope,
+          learning.project_path ?? null,
+          learning.confidence,
+          learning.created_at,
+          learning.updated_at,
+          learning.created_by,
+          learning.version,
+          learning.deprecated ? 1 : 0,
+          learning.deprecated_reason,
+          learning.deprecated_at,
+          learning.access_count,
+          learning.last_accessed_at,
+          learning.applies_to ? JSON.stringify(learning.applies_to) : null
+        );
+
+      this.db
+        .prepare("DELETE FROM learning_tags WHERE learning_id = ?")
+        .run(learning.id);
+      const insertTag = this.db.prepare(
+        "INSERT INTO learning_tags (learning_id, tag) VALUES (?, ?)"
+      );
+      for (const tag of learning.tags) {
+        insertTag.run(learning.id, tag);
+      }
+
+      this.db
+        .prepare("DELETE FROM file_refs WHERE learning_id = ?")
+        .run(learning.id);
+      const insertFileRef = this.db.prepare(
+        "INSERT INTO file_refs (learning_id, path, line_start, line_end, snippet) VALUES (?, ?, ?, ?, ?)"
+      );
+      for (const ref of learning.file_references) {
+        insertFileRef.run(
+          learning.id,
+          ref.path,
+          ref.line_start ?? null,
+          ref.line_end ?? null,
+          ref.snippet ?? null
+        );
+      }
+
+      this.syncRelationsForLearning(learning.id, learning.related_ids);
+    })();
+
+    this.generateEmbeddingAsync(learning.id, learning.title, learning.content);
+
+    const updated = this.get(learning.id);
+    if (!updated) {
+      throw new Error(`Failed to upsert learning "${learning.id}"`);
+    }
+
+    return { learning: updated, created: !existing, skipped: false };
   }
 
   get(id: string, recordAccess = false): Learning | null {
@@ -271,16 +476,7 @@ export class LearningRepository {
 
       // Update relations if provided
       if (input.related_ids !== undefined) {
-        this.db
-          .prepare("DELETE FROM learning_relations WHERE source_id = ?")
-          .run(input.id);
-        const insertRelation = this.db.prepare(
-          "INSERT OR IGNORE INTO learning_relations (source_id, target_id) VALUES (?, ?)"
-        );
-        for (const relatedId of input.related_ids) {
-          insertRelation.run(input.id, relatedId);
-          insertRelation.run(relatedId, input.id);
-        }
+        this.syncRelationsForLearning(input.id, input.related_ids);
       }
     })();
 
@@ -419,7 +615,21 @@ export class LearningRepository {
       relevance_score: number;
     })[];
 
-    return rows.map((row) => this.hydrateSummary(row));
+    if (rows.length === 0) return [];
+
+    const minScore = Math.min(...rows.map((r) => r.relevance_score));
+    const maxScore = Math.max(...rows.map((r) => r.relevance_score));
+    const range = maxScore - minScore || 1;
+    const relevanceById = new Map<string, number>();
+    for (const row of rows) {
+      const normalized = 1 - (row.relevance_score - minScore) / range;
+      relevanceById.set(row.id, normalized);
+    }
+
+    return this.rankSummariesWithQuality(
+      rows.map((row) => this.hydrateSummary(row)),
+      relevanceById
+    );
   }
 
   linkLearnings(sourceId: string, targetId: string): boolean {
@@ -554,13 +764,15 @@ export class LearningRepository {
     );
 
     // Sort by combined score and limit
-    const sortedIds = Array.from(combined.entries())
+    const sortedEntries = Array.from(combined.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, input.limit)
-      .map(([id]) => id);
+      .slice(0, input.limit);
 
     // Fetch summaries for the top results
-    return this.getSummariesByIds(sortedIds);
+    return this.getSummariesByIds(
+      sortedEntries.map(([id]) => id),
+      new Map(sortedEntries)
+    );
   }
 
   private keywordSearch(input: SearchOptions): LearningSummary[] {
@@ -701,12 +913,14 @@ export class LearningRepository {
 
   private async pureSemanticSearch(input: SearchOptions): Promise<LearningSummary[]> {
     const scores = await this.semanticSearchWithScores(input);
-    const sortedIds = Array.from(scores.entries())
+    const sortedEntries = Array.from(scores.entries())
       .sort((a, b) => b[1] - a[1])
-      .slice(0, input.limit)
-      .map(([id]) => id);
+      .slice(0, input.limit);
 
-    return this.getSummariesByIds(sortedIds);
+    return this.getSummariesByIds(
+      sortedEntries.map(([id]) => id),
+      new Map(sortedEntries)
+    );
   }
 
   private combineSearchResults(
@@ -733,7 +947,54 @@ export class LearningRepository {
     return combined;
   }
 
-  getSummariesByIds(ids: string[]): LearningSummary[] {
+  private calculateRecencyScore(createdAt: string): number {
+    const ageMs = Date.now() - new Date(createdAt).getTime();
+    const ageDays = Math.max(0, ageMs / (1000 * 60 * 60 * 24));
+    return Math.max(0, 1 - ageDays / 365);
+  }
+
+  getUsefulnessScore(learningId: string): number {
+    const row = this.db
+      .prepare(
+        "SELECT usefulness_score FROM learning_quality_metrics WHERE learning_id = ?"
+      )
+      .get(learningId) as { usefulness_score: number } | undefined;
+    return row?.usefulness_score ?? 0.5;
+  }
+
+  private rankSummariesWithQuality(
+    summaries: LearningSummary[],
+    relevanceById?: Map<string, number>
+  ): LearningSummary[] {
+    if (summaries.length === 0) return summaries;
+
+    const scoreWithSummary = summaries.map((summary, index) => {
+      const fallbackRelevance =
+        summaries.length === 1 ? 1 : 1 - index / (summaries.length - 1);
+      const relevance =
+        relevanceById?.get(summary.id) ??
+        summary.relevance_score ??
+        fallbackRelevance;
+      const usefulness = this.getUsefulnessScore(summary.id);
+      const recency = this.calculateRecencyScore(summary.created_at);
+      const finalScore = relevance * 0.55 + usefulness * 0.3 + recency * 0.15;
+      return {
+        summary: {
+          ...summary,
+          relevance_score: relevance,
+        },
+        finalScore,
+      };
+    });
+
+    scoreWithSummary.sort((a, b) => b.finalScore - a.finalScore);
+    return scoreWithSummary.map((item) => item.summary);
+  }
+
+  getSummariesByIds(
+    ids: string[],
+    relevanceById?: Map<string, number>
+  ): LearningSummary[] {
     if (ids.length === 0) return [];
 
     const summaries: LearningSummary[] = [];
@@ -745,14 +1006,15 @@ export class LearningRepository {
         .get(id) as SummaryRow | undefined;
 
       if (row) {
-        summaries.push(this.hydrateSummary(row));
+        const summary = this.hydrateSummary(row);
+        if (relevanceById && relevanceById.has(summary.id)) {
+          summary.relevance_score = relevanceById.get(summary.id);
+        }
+        summaries.push(summary);
       }
     }
 
-    // Record access for search results
-    this.recordAccess(ids);
-
-    return summaries;
+    return this.rankSummariesWithQuality(summaries, relevanceById);
   }
 
   // Methods for reembed tool
@@ -938,16 +1200,7 @@ export class LearningRepository {
       }
 
       // Update relations
-      this.db
-        .prepare("DELETE FROM learning_relations WHERE source_id = ?")
-        .run(learningId);
-      const insertRelation = this.db.prepare(
-        "INSERT OR IGNORE INTO learning_relations (source_id, target_id) VALUES (?, ?)"
-      );
-      for (const relatedId of targetVersion.related_ids) {
-        insertRelation.run(learningId, relatedId);
-        insertRelation.run(relatedId, learningId);
-      }
+      this.syncRelationsForLearning(learningId, targetVersion.related_ids);
     })();
 
     // Save the new state after rollback
@@ -1223,6 +1476,42 @@ export class LearningRepository {
     return { nodes, edges };
   }
 
+  verifyRelations(): {
+    asymmetric: Array<{ source_id: string; target_id: string }>;
+    orphan_sources: Array<{ source_id: string; target_id: string }>;
+    orphan_targets: Array<{ source_id: string; target_id: string }>;
+  } {
+    const asymmetric = this.db
+      .prepare(
+        `SELECT lr.source_id, lr.target_id
+         FROM learning_relations lr
+         LEFT JOIN learning_relations reverse
+           ON reverse.source_id = lr.target_id AND reverse.target_id = lr.source_id
+         WHERE reverse.source_id IS NULL`
+      )
+      .all() as Array<{ source_id: string; target_id: string }>;
+
+    const orphan_sources = this.db
+      .prepare(
+        `SELECT lr.source_id, lr.target_id
+         FROM learning_relations lr
+         LEFT JOIN learnings source ON source.id = lr.source_id
+         WHERE source.id IS NULL`
+      )
+      .all() as Array<{ source_id: string; target_id: string }>;
+
+    const orphan_targets = this.db
+      .prepare(
+        `SELECT lr.source_id, lr.target_id
+         FROM learning_relations lr
+         LEFT JOIN learnings target ON target.id = lr.target_id
+         WHERE target.id IS NULL`
+      )
+      .all() as Array<{ source_id: string; target_id: string }>;
+
+    return { asymmetric, orphan_sources, orphan_targets };
+  }
+
   recordAccess(ids: string[]): void {
     if (ids.length === 0) return;
     const now = new Date().toISOString();
@@ -1234,6 +1523,162 @@ export class LearningRepository {
         stmt.run(now, id);
       }
     })();
+  }
+
+  recordFeedback(
+    learningId: string,
+    outcome: FeedbackOutcome,
+    source: FeedbackSource,
+    context?: string
+  ): QualityMetrics | null {
+    const learning = this.get(learningId);
+    if (!learning) return null;
+
+    const now = new Date().toISOString();
+
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          `INSERT INTO learning_feedback (learning_id, outcome, source, context, created_at)
+           VALUES (?, ?, ?, ?, ?)`
+        )
+        .run(learningId, outcome, source, context ?? null, now);
+
+      const existing = this.db
+        .prepare(
+          `SELECT used_count, helpful_count, dismissed_count
+           FROM learning_quality_metrics
+           WHERE learning_id = ?`
+        )
+        .get(learningId) as
+        | { used_count: number; helpful_count: number; dismissed_count: number }
+        | undefined;
+
+      const usedCount = (existing?.used_count ?? 0) + (outcome === "used" ? 1 : 0);
+      const helpfulCount =
+        (existing?.helpful_count ?? 0) + (outcome === "helpful" ? 1 : 0);
+      const dismissedCount =
+        (existing?.dismissed_count ?? 0) + (outcome === "dismissed" ? 1 : 0);
+      const total = usedCount + helpfulCount + dismissedCount;
+      const rawScore =
+        total === 0
+          ? 0
+          : (helpfulCount + usedCount * 0.5 - dismissedCount) / total;
+      const usefulnessScore = Math.max(0, Math.min(1, (rawScore + 1) / 2));
+
+      this.db
+        .prepare(
+          `INSERT INTO learning_quality_metrics
+            (learning_id, used_count, helpful_count, dismissed_count, usefulness_score, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT(learning_id) DO UPDATE SET
+             used_count = excluded.used_count,
+             helpful_count = excluded.helpful_count,
+             dismissed_count = excluded.dismissed_count,
+             usefulness_score = excluded.usefulness_score,
+             updated_at = excluded.updated_at`
+        )
+        .run(
+          learningId,
+          usedCount,
+          helpfulCount,
+          dismissedCount,
+          usefulnessScore,
+          now
+        );
+    })();
+
+    return this.getQualityMetrics(learningId);
+  }
+
+  getQualityMetrics(learningId: string): QualityMetrics | null {
+    const row = this.db
+      .prepare("SELECT * FROM learning_quality_metrics WHERE learning_id = ?")
+      .get(learningId) as QualityMetrics | undefined;
+    return row ?? null;
+  }
+
+  createAutonomyRun(input: AutonomyRunInput): AutonomyRun {
+    const id = input.id ?? uuidv4();
+
+    this.db
+      .prepare(
+        `INSERT INTO autonomy_runs
+          (id, project_path, sources_json, maintenance, dry_run, status, collected_count,
+           inserted_count, skipped_count, notes, started_at, finished_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        id,
+        input.project_path ?? null,
+        JSON.stringify(input.sources),
+        input.maintenance ? 1 : 0,
+        input.dry_run ? 1 : 0,
+        input.status,
+        input.collected_count,
+        input.inserted_count,
+        input.skipped_count,
+        input.notes ?? null,
+        input.started_at,
+        input.finished_at
+      );
+
+    const row = this.db
+      .prepare("SELECT * FROM autonomy_runs WHERE id = ?")
+      .get(id) as AutonomyRunRow | undefined;
+    if (!row) {
+      throw new Error("Failed to create autonomy run");
+    }
+    return this.hydrateAutonomyRun(row);
+  }
+
+  listAutonomyRuns(limit = 50): AutonomyRun[] {
+    const rows = this.db
+      .prepare("SELECT * FROM autonomy_runs ORDER BY started_at DESC LIMIT ?")
+      .all(limit) as AutonomyRunRow[];
+    return rows.map((row) => this.hydrateAutonomyRun(row));
+  }
+
+  isAutonomyFingerprintSeen(fingerprint: string): boolean {
+    const row = this.db
+      .prepare("SELECT id FROM autonomy_candidates WHERE fingerprint = ?")
+      .get(fingerprint) as { id: string } | undefined;
+    return !!row;
+  }
+
+  recordAutonomyCandidate(input: {
+    id?: string;
+    run_id: string;
+    source: "git" | "tests" | "pr" | "maintenance";
+    fingerprint: string;
+    decision:
+      | "inserted"
+      | "skipped_duplicate"
+      | "skipped_low_confidence"
+      | "suggested"
+      | "error";
+    learning_id?: string;
+    payload_json: string;
+    reason?: string;
+    created_at?: string;
+  }): void {
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO autonomy_candidates
+          (id, run_id, source, fingerprint, decision, learning_id, payload_json, reason, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.id ?? uuidv4(),
+        input.run_id,
+        input.source,
+        input.fingerprint,
+        input.decision,
+        input.learning_id ?? null,
+        input.payload_json,
+        input.reason ?? null,
+        input.created_at ?? new Date().toISOString()
+      );
   }
 
   findByFileRefs(filePaths: string[], limit = 20): Learning[] {
@@ -1298,6 +1743,41 @@ export class LearningRepository {
     } catch {
       return false;
     }
+  }
+
+  private syncRelationsForLearning(learningId: string, relatedIds: string[]): void {
+    this.db
+      .prepare(
+        "DELETE FROM learning_relations WHERE source_id = ? OR target_id = ?"
+      )
+      .run(learningId, learningId);
+
+    if (relatedIds.length === 0) return;
+    const insertRelation = this.db.prepare(
+      "INSERT OR IGNORE INTO learning_relations (source_id, target_id) VALUES (?, ?)"
+    );
+    for (const relatedId of new Set(relatedIds)) {
+      if (relatedId === learningId) continue;
+      insertRelation.run(learningId, relatedId);
+      insertRelation.run(relatedId, learningId);
+    }
+  }
+
+  private hydrateAutonomyRun(row: AutonomyRunRow): AutonomyRun {
+    return {
+      id: row.id,
+      project_path: row.project_path,
+      sources_json: row.sources_json,
+      maintenance: row.maintenance === 1,
+      dry_run: row.dry_run === 1,
+      status: row.status as "success" | "partial" | "failed",
+      collected_count: row.collected_count,
+      inserted_count: row.inserted_count,
+      skipped_count: row.skipped_count,
+      notes: row.notes,
+      started_at: row.started_at,
+      finished_at: row.finished_at,
+    };
   }
 
   private hydrateVersion(row: VersionRow): LearningVersion {
@@ -1438,4 +1918,19 @@ interface VersionRow {
   changed_at: string;
   changed_by: string;
   change_type: string;
+}
+
+interface AutonomyRunRow {
+  id: string;
+  project_path: string | null;
+  sources_json: string;
+  maintenance: number;
+  dry_run: number;
+  status: string;
+  collected_count: number;
+  inserted_count: number;
+  skipped_count: number;
+  notes: string | null;
+  started_at: string;
+  finished_at: string;
 }

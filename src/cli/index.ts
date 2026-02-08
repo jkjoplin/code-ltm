@@ -13,3 +13,8 @@ export { registerStatsCommand } from "./commands/stats.js";
 export { registerConfigCommand } from "./commands/config.js";
 export { registerSeedCommand } from "./commands/seed.js";
 export { registerDigestCommand } from "./commands/digest.js";
+export { registerUpsertCommand } from "./commands/upsert.js";
+export { registerFeedbackCommand } from "./commands/feedback.js";
+export { registerVerifyRelationsCommand } from "./commands/verify-relations.js";
+export { registerAutonomyCommand } from "./commands/autonomy.js";
+export { registerDoctorCommand } from "./commands/doctor.js";

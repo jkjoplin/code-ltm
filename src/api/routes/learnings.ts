@@ -3,6 +3,8 @@ import type { LearningRepository } from "../../db/repository.js";
 import {
   AddLearningInputSchema,
   UpdateLearningInputSchema,
+  UpsertLearningInputSchema,
+  RecordLearningFeedbackInputSchema,
   LearningTypeSchema,
   ScopeSchema,
   SearchModeSchema,
@@ -75,7 +77,10 @@ export function learningsRouter(repo: LearningRepository): Router {
       const projectPath = req.query.project_path as string | undefined;
       const limit = parseInt(req.query.limit as string) || 20;
       const mode = (req.query.mode as string) || "hybrid";
-      const semanticWeight = parseFloat(req.query.semantic_weight as string) || 0.5;
+      const parsedWeight = Number.parseFloat(req.query.semantic_weight as string);
+      const semanticWeight = Number.isNaN(parsedWeight)
+        ? 0.5
+        : Math.max(0, Math.min(1, parsedWeight));
 
       // Parse tags
       let tags: string[] | undefined;
@@ -102,6 +107,10 @@ export function learningsRouter(repo: LearningRepository): Router {
         mode: mode as "keyword" | "semantic" | "hybrid",
         semantic_weight: semanticWeight,
       });
+
+      if (learnings.length > 0) {
+        repo.recordAccess(learnings.map((l) => l.id));
+      }
 
       res.json({
         learnings,
@@ -153,6 +162,26 @@ export function learningsRouter(repo: LearningRepository): Router {
     })
   );
 
+  // POST /api/learnings - Create new learning
+  router.post(
+    "/",
+    asyncHandler(async (req, res) => {
+      const input = AddLearningInputSchema.parse(req.body);
+      const learning = repo.add(input);
+      res.status(201).json(learning);
+    })
+  );
+
+  // POST /api/learnings/upsert - Upsert learning (additive API)
+  router.post(
+    "/upsert",
+    asyncHandler(async (req, res) => {
+      const input = UpsertLearningInputSchema.parse(req.body);
+      const result = repo.upsert(input, "api");
+      res.status(result.created ? 201 : 200).json(result);
+    })
+  );
+
   // GET /api/learnings/:id - Get single learning
   router.get(
     "/:id",
@@ -165,16 +194,6 @@ export function learningsRouter(repo: LearningRepository): Router {
       }
 
       res.json(learning);
-    })
-  );
-
-  // POST /api/learnings - Create new learning
-  router.post(
-    "/",
-    asyncHandler(async (req, res) => {
-      const input = AddLearningInputSchema.parse(req.body);
-      const learning = repo.add(input);
-      res.status(201).json(learning);
     })
   );
 
@@ -222,6 +241,28 @@ export function learningsRouter(repo: LearningRepository): Router {
       }
 
       res.json({ success: true, source_id: id, target_id: targetId });
+    })
+  );
+
+  // POST /api/learnings/:id/feedback - Record learning feedback
+  router.post(
+    "/:id/feedback",
+    asyncHandler(async (req, res) => {
+      const id = z.string().uuid().parse(req.params.id);
+      const input = RecordLearningFeedbackInputSchema.parse({
+        ...req.body,
+        id,
+      });
+      const metrics = repo.recordFeedback(
+        input.id,
+        input.outcome,
+        input.source,
+        input.context
+      );
+      if (!metrics) {
+        throw createHttpError(404, "Learning not found");
+      }
+      res.status(201).json({ success: true, metrics });
     })
   );
 

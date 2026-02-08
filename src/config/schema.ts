@@ -62,11 +62,19 @@ export const CliConfigSchema = z.object({
 });
 export type CliConfig = z.infer<typeof CliConfigSchema>;
 
+export const AutonomyConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  dry_run_default: z.boolean().default(true),
+  schedule_hours: z.number().int().positive().default(6),
+});
+export type AutonomyConfig = z.infer<typeof AutonomyConfigSchema>;
+
 // Full config schema
 export const ConfigSchema = z.object({
   database: DatabaseConfigSchema.default({}),
   embeddings: EmbeddingsConfigSchema.default({}),
   cli: CliConfigSchema.default({}),
+  autonomy: AutonomyConfigSchema.default({}),
 });
 export type Config = z.infer<typeof ConfigSchema>;
 
@@ -82,6 +90,7 @@ export const PartialConfigSchema = z.object({
     })
     .optional(),
   cli: CliConfigSchema.partial().optional(),
+  autonomy: AutonomyConfigSchema.partial().optional(),
 });
 export type PartialConfig = z.infer<typeof PartialConfigSchema>;
 

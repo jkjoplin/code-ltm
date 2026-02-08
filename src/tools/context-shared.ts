@@ -69,15 +69,17 @@ export async function getContextInternal(
 
   // Sort by score descending, take max_results
   const sorted = Array.from(results.values())
+    .map((item) => {
+      const usefulness = repo.getUsefulnessScore(item.learning.id);
+      const ageDays =
+        (Date.now() - new Date(item.learning.created_at).getTime()) /
+        (1000 * 60 * 60 * 24);
+      const recency = Math.max(0, 1 - ageDays / 365);
+      const finalScore = item.score * 0.55 + usefulness * 40 * 0.3 + recency * 40 * 0.15;
+      return { ...item, score: finalScore };
+    })
     .sort((a, b) => b.score - a.score)
     .slice(0, max_results);
 
-  const learnings = sorted.map((r) => r.learning);
-
-  // Record access on returned results
-  if (learnings.length > 0) {
-    repo.recordAccess(learnings.map((l) => l.id));
-  }
-
-  return learnings;
+  return sorted.map((r) => r.learning);
 }

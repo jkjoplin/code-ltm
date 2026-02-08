@@ -121,6 +121,59 @@ export const ReembedLearningsInputSchema = z.object({
 });
 export type ReembedLearningsInput = z.infer<typeof ReembedLearningsInputSchema>;
 
+export const UpsertIfExistsSchema = z.enum(["skip", "update", "error"]);
+export type UpsertIfExists = z.infer<typeof UpsertIfExistsSchema>;
+
+export const UpsertLearningInputSchema = z.object({
+  id: z.string().uuid().optional(),
+  title: z.string().min(1).max(200),
+  content: z.string().min(1),
+  type: LearningTypeSchema,
+  scope: ScopeSchema,
+  project_path: z.string().nullable().optional(),
+  tags: z.array(z.string()).default([]),
+  file_references: z.array(FileRefSchema).default([]),
+  related_ids: z.array(z.string().uuid()).default([]),
+  confidence: ConfidenceSchema.default("medium"),
+  created_by: z.string().default("unknown-agent"),
+  created_at: z.string().datetime().optional(),
+  updated_at: z.string().datetime().optional(),
+  version: z.number().int().positive().optional(),
+  deprecated: z.boolean().default(false),
+  deprecated_reason: z.string().nullable().optional(),
+  deprecated_at: z.string().datetime().nullable().optional(),
+  applies_to: z.array(z.string()).nullable().optional(),
+  if_exists: UpsertIfExistsSchema.default("update"),
+});
+export type UpsertLearningInput = z.infer<typeof UpsertLearningInputSchema>;
+
+export const FeedbackOutcomeSchema = z.enum(["used", "helpful", "dismissed"]);
+export type FeedbackOutcome = z.infer<typeof FeedbackOutcomeSchema>;
+
+export const FeedbackSourceSchema = z.enum(["agent", "user", "auto"]);
+export type FeedbackSource = z.infer<typeof FeedbackSourceSchema>;
+
+export const RecordLearningFeedbackInputSchema = z.object({
+  id: z.string().uuid(),
+  outcome: FeedbackOutcomeSchema,
+  source: FeedbackSourceSchema.default("agent"),
+  context: z.string().max(2000).optional(),
+});
+export type RecordLearningFeedbackInput = z.infer<
+  typeof RecordLearningFeedbackInputSchema
+>;
+
+export const AutonomySourceSchema = z.enum(["git", "tests", "pr"]);
+export type AutonomySource = z.infer<typeof AutonomySourceSchema>;
+
+export const RunAutonomyCycleInputSchema = z.object({
+  project_path: z.string().optional(),
+  sources: z.array(AutonomySourceSchema).default(["git", "tests", "pr"]),
+  maintenance: z.boolean().default(false),
+  dry_run: z.boolean().default(false),
+});
+export type RunAutonomyCycleInput = z.infer<typeof RunAutonomyCycleInputSchema>;
+
 export const LinkLearningsInputSchema = z.object({
   source_id: z.string().uuid(),
   target_id: z.string().uuid(),
@@ -205,3 +258,39 @@ export const RelationshipGraphSchema = z.object({
   edges: z.array(GraphEdgeSchema),
 });
 export type RelationshipGraph = z.infer<typeof RelationshipGraphSchema>;
+
+export const LearningFeedbackSchema = z.object({
+  id: z.number().int().positive(),
+  learning_id: z.string().uuid(),
+  outcome: FeedbackOutcomeSchema,
+  source: FeedbackSourceSchema,
+  context: z.string().nullable().optional(),
+  created_at: z.string().datetime(),
+});
+export type LearningFeedback = z.infer<typeof LearningFeedbackSchema>;
+
+export const LearningQualityMetricsSchema = z.object({
+  learning_id: z.string().uuid(),
+  used_count: z.number().int().nonnegative(),
+  helpful_count: z.number().int().nonnegative(),
+  dismissed_count: z.number().int().nonnegative(),
+  usefulness_score: z.number().min(0).max(1),
+  updated_at: z.string().datetime(),
+});
+export type LearningQualityMetrics = z.infer<typeof LearningQualityMetricsSchema>;
+
+export const AutonomyRunSchema = z.object({
+  id: z.string().uuid(),
+  project_path: z.string().nullable(),
+  sources_json: z.string(),
+  maintenance: z.boolean(),
+  dry_run: z.boolean(),
+  status: z.enum(["success", "partial", "failed"]),
+  collected_count: z.number().int().nonnegative(),
+  inserted_count: z.number().int().nonnegative(),
+  skipped_count: z.number().int().nonnegative(),
+  notes: z.string().nullable().optional(),
+  started_at: z.string().datetime(),
+  finished_at: z.string().datetime(),
+});
+export type AutonomyRun = z.infer<typeof AutonomyRunSchema>;

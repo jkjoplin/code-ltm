@@ -5,6 +5,7 @@ import LearningPage from "./pages/LearningPage";
 import SettingsPage from "./pages/SettingsPage";
 import PromotionPage from "./pages/PromotionPage";
 import GraphPage from "./pages/GraphPage";
+import AutonomyPage from "./pages/AutonomyPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
         <Route path="/learning/:id" element={<LearningPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/promote" element={<PromotionPage />} />
+        <Route path="/autonomy" element={<AutonomyPage />} />
         <Route path="/graph" element={<GraphPage />} />
         <Route path="/graph/:id" element={<GraphPage />} />
       </Routes>

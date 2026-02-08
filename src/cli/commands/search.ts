@@ -58,6 +58,11 @@ export function registerSearchCommand(program: Command): void {
           : undefined;
 
         const searchSpinner = ora("Searching...").start();
+        const parsedWeight = Number.parseFloat(opts.weight);
+        const semanticWeight =
+          Number.isNaN(parsedWeight)
+            ? 0.5
+            : Math.max(0, Math.min(1, parsedWeight));
 
         const results = await repo.hybridSearch({
           query,
@@ -67,8 +72,12 @@ export function registerSearchCommand(program: Command): void {
           project_path: opts.project,
           limit: parseInt(opts.limit, 10) || config.cli.default_limit,
           mode,
-          semantic_weight: parseFloat(opts.weight) || 0.5,
+          semantic_weight: semanticWeight,
         });
+
+        if (results.length > 0) {
+          repo.recordAccess(results.map((r) => r.id));
+        }
 
         searchSpinner.succeed(`Found ${results.length} result(s)`);
 

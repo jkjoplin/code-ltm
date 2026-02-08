@@ -23,6 +23,8 @@ export function createDatabase(): Database.Database {
 
   // Enable WAL mode for better concurrent access
   db.pragma("journal_mode = WAL");
+  // Explicitly enforce foreign key constraints.
+  db.pragma("foreign_keys = ON");
 
   // Load sqlite-vec extension for vector search
   sqliteVec.load(db);
@@ -330,6 +332,78 @@ function getMigrations(): Migration[] {
         END;
 
         PRAGMA foreign_keys = ON;
+      `,
+    },
+    {
+      name: "006_add_feedback_and_quality_metrics",
+      sql: `
+        CREATE TABLE IF NOT EXISTS learning_feedback (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          learning_id TEXT NOT NULL,
+          outcome TEXT NOT NULL CHECK (outcome IN ('used', 'helpful', 'dismissed')),
+          source TEXT NOT NULL CHECK (source IN ('agent', 'user', 'auto')),
+          context TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_learning_feedback_learning_id
+        ON learning_feedback(learning_id);
+
+        CREATE INDEX IF NOT EXISTS idx_learning_feedback_created_at
+        ON learning_feedback(created_at);
+
+        CREATE TABLE IF NOT EXISTS learning_quality_metrics (
+          learning_id TEXT PRIMARY KEY,
+          used_count INTEGER NOT NULL DEFAULT 0,
+          helpful_count INTEGER NOT NULL DEFAULT 0,
+          dismissed_count INTEGER NOT NULL DEFAULT 0,
+          usefulness_score REAL NOT NULL DEFAULT 0.5,
+          updated_at TEXT NOT NULL,
+          FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE CASCADE
+        );
+      `,
+    },
+    {
+      name: "007_add_autonomy_audit_tables",
+      sql: `
+        CREATE TABLE IF NOT EXISTS autonomy_runs (
+          id TEXT PRIMARY KEY,
+          project_path TEXT,
+          sources_json TEXT NOT NULL,
+          maintenance INTEGER NOT NULL DEFAULT 0,
+          dry_run INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL CHECK (status IN ('success', 'partial', 'failed')),
+          collected_count INTEGER NOT NULL DEFAULT 0,
+          inserted_count INTEGER NOT NULL DEFAULT 0,
+          skipped_count INTEGER NOT NULL DEFAULT 0,
+          notes TEXT,
+          started_at TEXT NOT NULL,
+          finished_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_autonomy_runs_started_at
+        ON autonomy_runs(started_at);
+
+        CREATE TABLE IF NOT EXISTS autonomy_candidates (
+          id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL,
+          source TEXT NOT NULL CHECK (source IN ('git', 'tests', 'pr', 'maintenance')),
+          fingerprint TEXT NOT NULL,
+          decision TEXT NOT NULL CHECK (decision IN ('inserted', 'skipped_duplicate', 'skipped_low_confidence', 'suggested', 'error')),
+          learning_id TEXT,
+          payload_json TEXT NOT NULL,
+          reason TEXT,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (run_id) REFERENCES autonomy_runs(id) ON DELETE CASCADE,
+          FOREIGN KEY (learning_id) REFERENCES learnings(id) ON DELETE SET NULL
+        );
+
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_autonomy_candidates_fingerprint
+        ON autonomy_candidates(fingerprint);
+
+        CREATE INDEX IF NOT EXISTS idx_autonomy_candidates_run_id
+        ON autonomy_candidates(run_id);
       `,
     },
   ];

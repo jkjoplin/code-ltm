@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import type { LearningSummary } from "../api/client";
+import FeedbackButtons from "./FeedbackButtons";
 
 interface LearningCardProps {
   learning: LearningSummary;
@@ -43,65 +44,68 @@ function formatDate(dateStr: string): string {
 
 export default function LearningCard({ learning }: LearningCardProps) {
   return (
-    <Link
-      to={`/learning/${learning.id}`}
-      className="block bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <h3 className="font-medium text-gray-900 truncate">{learning.title}</h3>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <span
-              className={`px-2 py-0.5 text-xs font-medium rounded ${TYPE_COLORS[learning.type]}`}
-            >
-              {learning.type}
-            </span>
-            <span
-              className={`px-2 py-0.5 text-xs font-medium rounded ${SCOPE_COLORS[learning.scope]}`}
-            >
-              {learning.scope}
-            </span>
-            {learning.tags.slice(0, 3).map((tag) => (
+    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all">
+      <Link to={`/learning/${learning.id}`} className="block">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-gray-900 truncate">{learning.title}</h3>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
               <span
-                key={tag}
-                className="px-2 py-0.5 text-xs text-gray-600 bg-gray-100 rounded"
+                className={`px-2 py-0.5 text-xs font-medium rounded ${TYPE_COLORS[learning.type]}`}
               >
-                {tag}
+                {learning.type}
               </span>
-            ))}
-            {learning.tags.length > 3 && (
-              <span className="text-xs text-gray-400">
-                +{learning.tags.length - 3} more
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-            <span>{formatDate(learning.created_at)}</span>
-            <span className="flex items-center gap-1">
               <span
-                className={`w-2 h-2 rounded-full ${CONFIDENCE_INDICATOR[learning.confidence]}`}
-              />
-              {learning.confidence} confidence
-            </span>
-            {learning.relevance_score !== undefined && (
-              <span>Score: {learning.relevance_score.toFixed(2)}</span>
-            )}
+                className={`px-2 py-0.5 text-xs font-medium rounded ${SCOPE_COLORS[learning.scope]}`}
+              >
+                {learning.scope}
+              </span>
+              {learning.tags.slice(0, 3).map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2 py-0.5 text-xs text-gray-600 bg-gray-100 rounded"
+                >
+                  {tag}
+                </span>
+              ))}
+              {learning.tags.length > 3 && (
+                <span className="text-xs text-gray-400">
+                  +{learning.tags.length - 3} more
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+              <span>{formatDate(learning.created_at)}</span>
+              <span className="flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full ${CONFIDENCE_INDICATOR[learning.confidence]}`}
+                />
+                {learning.confidence} confidence
+              </span>
+              {learning.relevance_score !== undefined && (
+                <span>Score: {learning.relevance_score.toFixed(2)}</span>
+              )}
+            </div>
           </div>
+          <svg
+            className="w-5 h-5 text-gray-400 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 5l7 7-7 7"
+            />
+          </svg>
         </div>
-        <svg
-          className="w-5 h-5 text-gray-400 flex-shrink-0"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 5l7 7-7 7"
-          />
-        </svg>
+      </Link>
+      <div className="mt-3 border-t border-gray-100 pt-3 flex items-center justify-between gap-3">
+        <span className="text-xs text-gray-500">Was this useful?</span>
+        <FeedbackButtons learningId={learning.id} compact />
       </div>
-    </Link>
+    </div>
   );
 }

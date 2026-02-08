@@ -4,6 +4,8 @@ import {
   type ListParams,
   type CreateLearningInput,
   type UpdateLearningInput,
+  type FeedbackOutcome,
+  type FeedbackSource,
 } from "../api/client";
 
 export function useLearnings(params: ListParams) {
@@ -75,5 +77,29 @@ export function useStats() {
   return useQuery({
     queryKey: ["stats"],
     queryFn: () => api.getStats(),
+  });
+}
+
+export function useRecordFeedback() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      outcome,
+      source,
+      context,
+    }: {
+      id: string;
+      outcome: FeedbackOutcome;
+      source?: FeedbackSource;
+      context?: string;
+    }) => api.recordFeedback(id, outcome, source, context),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["learning", variables.id] });
+      queryClient.invalidateQueries({ queryKey: ["learnings"] });
+      queryClient.invalidateQueries({ queryKey: ["search"] });
+      queryClient.invalidateQueries({ queryKey: ["stats"] });
+    },
   });
 }

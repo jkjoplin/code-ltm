@@ -133,7 +133,19 @@ function addLearning(repo: LearningRepository, overrides: Partial<AddLearningInp
   return repo.add(input);
 }
 
-describe("generateDigest", () => {
+const sqliteAvailable = (() => {
+  try {
+    const probe = new Database(":memory:");
+    probe.close();
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+const describeDigest = sqliteAvailable ? describe : describe.skip;
+
+describeDigest("generateDigest", () => {
   let db: Database.Database;
   let repo: LearningRepository;
 

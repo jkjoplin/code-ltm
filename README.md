@@ -96,12 +96,15 @@ Or if installed globally:
 | Tool | Description |
 |------|-------------|
 | `add_learning` | Record a new learning, pattern, gotcha, or insight |
+| `upsert_learning` | Create/update with optional explicit ID and metadata |
 | `get_learning` | Retrieve a single learning by ID |
 | `update_learning` | Update an existing learning |
 | `delete_learning` | Remove a learning |
 | `list_learnings` | List learnings with optional filters |
 | `search_learnings` | Search learnings using keyword matching |
 | `link_learnings` | Create relationships between learnings |
+| `record_learning_feedback` | Record used/helpful/dismissed feedback signals |
+| `run_autonomy_cycle` | Run autonomous ingestion/maintenance cycle |
 
 ## Data Storage
 

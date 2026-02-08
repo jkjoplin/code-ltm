@@ -18,6 +18,11 @@ import { registerStatsCommand } from "./cli/commands/stats.js";
 import { registerConfigCommand } from "./cli/commands/config.js";
 import { registerSeedCommand } from "./cli/commands/seed.js";
 import { registerDigestCommand } from "./cli/commands/digest.js";
+import { registerUpsertCommand } from "./cli/commands/upsert.js";
+import { registerFeedbackCommand } from "./cli/commands/feedback.js";
+import { registerVerifyRelationsCommand } from "./cli/commands/verify-relations.js";
+import { registerAutonomyCommand } from "./cli/commands/autonomy.js";
+import { registerDoctorCommand } from "./cli/commands/doctor.js";
 
 // Read package.json version
 const VERSION = "0.1.0";
@@ -73,6 +78,11 @@ registerStatsCommand(program);
 registerConfigCommand(program);
 registerSeedCommand(program);
 registerDigestCommand(program);
+registerUpsertCommand(program);
+registerFeedbackCommand(program);
+registerVerifyRelationsCommand(program);
+registerAutonomyCommand(program);
+registerDoctorCommand(program);
 
 // Parse and run
 program.parse();

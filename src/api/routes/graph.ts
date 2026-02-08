@@ -1,6 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import type { LearningRepository } from "../../db/repository.js";
 import { ScopeSchema, LearningTypeSchema } from "../../types.js";
+import type { LearningType } from "../../types.js";
 import { createHttpError } from "../middleware/error-handler.js";
 import { z } from "zod";
 
@@ -29,7 +30,7 @@ export function graphRouter(repo: LearningRepository): Router {
 
       const graph = repo.getRelationshipGraph({
         scope: scope as "project" | "cross-project" | "global" | undefined,
-        type: type as "gotcha" | "pattern" | "investigation" | "documentation" | "tip" | undefined,
+        type: type as LearningType | undefined,
         limit,
       });
 

@@ -96,8 +96,13 @@ export async function handleGetDigest(
     const recencyBonus = calculateRecencyBonus(full.created_at);
     const accessBonus = Math.min(full.access_count, 10);
     const taskBoost = boostedIds.has(full.id) ? 30 : 0;
+    const usefulness = repo.getUsefulnessScore(full.id);
 
-    const score = typePriority + confidenceBoost + digestTagBonus + recencyBonus + accessBonus + taskBoost;
+    const baseRelevance =
+      Math.min(100, typePriority + confidenceBoost + digestTagBonus + accessBonus + taskBoost) / 100;
+    const recency = recencyBonus / 5;
+    const blended = baseRelevance * 0.55 + usefulness * 0.3 + recency * 0.15;
+    const score = blended * 100;
 
     scoredLearnings.push({
       id: full.id,
