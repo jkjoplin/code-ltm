@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "name": "React Patterns & Gotchas",
+  "description": "Common React patterns, gotchas, and best practices",
+  "scope": "global",
+  "learnings": [
+    {
+      "title": "useEffect cleanup runs before every re-run, not just unmount",
+      "content": "The cleanup function returned from useEffect runs before the effect runs again (on dependency changes), not just on component unmount. This is intentional for preventing stale closures. Always clean up subscriptions, timers, and event listeners.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["react", "hooks", "useEffect"],
+      "confidence": "high"
+    },
+    {
+      "title": "Object/array dependencies cause infinite loops",
+      "content": "Objects and arrays created during render are new references each time, causing useEffect/useMemo/useCallback to re-run infinitely. Either memoize the dependency, destructure to primitives, or use a custom comparison hook.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["react", "hooks", "performance"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use key prop to reset component state",
+      "content": "Changing a component's key prop forces React to unmount and remount it, resetting all internal state. Use this pattern when you need to reset a form, clear selections, or restart animations based on prop changes.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["react", "state", "keys"],
+      "confidence": "high"
+    },
+    {
+      "title": "useState setter identity is stable - no need to include in deps",
+      "content": "The setter function from useState (and dispatch from useReducer) is guaranteed stable across renders. You don't need to include it in useEffect/useCallback dependency arrays, though including it doesn't cause issues.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["react", "hooks", "useState"],
+      "confidence": "high"
+    },
+    {
+      "title": "Derive state from props instead of syncing",
+      "content": "Instead of using useEffect to sync state with props, calculate derived values during render. If a value can be computed from props or other state, it shouldn't be in state. Use useMemo for expensive computations.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["react", "state", "derived-state"],
+      "confidence": "high"
+    },
+    {
+      "title": "useLayoutEffect for DOM measurements",
+      "content": "Use useLayoutEffect instead of useEffect when you need to measure DOM elements or make synchronous DOM mutations. It runs synchronously after DOM mutations but before paint, preventing visual flicker.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["react", "hooks", "dom"],
+      "confidence": "high"
+    },
+    {
+      "title": "StrictMode double-invokes effects to detect problems",
+      "content": "In development with StrictMode, React intentionally double-invokes effects, refs callbacks, and render functions. This helps find bugs with missing cleanup or impure renders. Production runs normally.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["react", "strictmode", "development"],
+      "confidence": "high"
+    },
+    {
+      "title": "Lift state up only as needed",
+      "content": "Keep state as close as possible to where it's used. Only lift state to a common ancestor when multiple components need to share it. Avoid putting everything in global state - it causes unnecessary re-renders and complexity.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["react", "state", "architecture"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use refs for values that don't trigger re-renders",
+      "content": "useRef is for mutable values that persist across renders without causing re-renders. Use it for DOM references, interval IDs, previous values, or any mutable value that shouldn't trigger updates when changed.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["react", "hooks", "useRef"],
+      "confidence": "high"
+    },
+    {
+      "title": "Event handlers in JSX get fresh closure each render",
+      "content": "Inline event handlers like `onClick={() => doSomething(value)}` always see current values because they're recreated each render. This is usually fine - only wrap in useCallback if passing to memoized children.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["react", "events", "closures"],
+      "confidence": "high"
+    }
+  ]
+}

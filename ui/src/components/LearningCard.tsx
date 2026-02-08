@@ -6,6 +6,7 @@ interface LearningCardProps {
 }
 
 const TYPE_COLORS: Record<string, string> = {
+  rule: "bg-amber-100 text-amber-800",
   pattern: "bg-purple-100 text-purple-800",
   gotcha: "bg-red-100 text-red-800",
   tip: "bg-green-100 text-green-800",

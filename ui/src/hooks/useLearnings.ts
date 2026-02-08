@@ -64,6 +64,13 @@ export function useTags() {
   });
 }
 
+export function useProjects() {
+  return useQuery({
+    queryKey: ["projects"],
+    queryFn: () => api.getProjects(),
+  });
+}
+
 export function useStats() {
   return useQuery({
     queryKey: ["stats"],

@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "name": "TypeScript Patterns & Gotchas",
+  "description": "Common TypeScript patterns, gotchas, and best practices",
+  "scope": "global",
+  "learnings": [
+    {
+      "title": "Use 'satisfies' for type-safe object literals with inference",
+      "content": "The 'satisfies' operator (TS 4.9+) validates that an object matches a type while preserving the narrower inferred type. Use `const config = { ... } satisfies Config` instead of type annotation when you want both validation and literal type inference.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "type-safety"],
+      "confidence": "high"
+    },
+    {
+      "title": "Avoid 'any' - use 'unknown' for truly unknown types",
+      "content": "When you don't know a type at compile time, use 'unknown' instead of 'any'. Unlike 'any', 'unknown' requires type narrowing before use, catching potential runtime errors at compile time. Use type guards or assertions to narrow unknown values.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "type-safety"],
+      "confidence": "high"
+    },
+    {
+      "title": "Object spread doesn't trigger excess property checks",
+      "content": "TypeScript's excess property checking only applies to object literals directly assigned to typed variables. Using spread (...) bypasses this check. If you need strict property checking, assign to a typed variable first or use a validation library like Zod.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["typescript", "type-checking"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use const assertions for literal types",
+      "content": "Add 'as const' to array and object literals to infer literal types instead of widened types. `['a', 'b'] as const` gives type `readonly ['a', 'b']` instead of `string[]`. This is essential for discriminated unions and exhaustive checks.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "literals"],
+      "confidence": "high"
+    },
+    {
+      "title": "Type narrowing doesn't work through callbacks",
+      "content": "TypeScript can't narrow types across callback boundaries. After an async operation or callback, the type reverts to its original. Store narrowed values in variables before callbacks, or use type assertions if you're certain of the type.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["typescript", "type-narrowing", "async"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use discriminated unions for type-safe state",
+      "content": "Model states with discriminated unions using a literal 'type' or 'status' field. This enables exhaustive switch statements and proper narrowing. Example: `type State = { status: 'loading' } | { status: 'success', data: T } | { status: 'error', error: Error }`",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "state-management", "unions"],
+      "confidence": "high"
+    },
+    {
+      "title": "Generic constraints with 'extends' for flexible yet type-safe functions",
+      "content": "Use `<T extends SomeType>` to constrain generics while preserving the specific type. This lets you accept any subtype while ensuring required properties exist. Example: `function getId<T extends { id: string }>(obj: T): T['id']`",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "generics"],
+      "confidence": "high"
+    },
+    {
+      "title": "Readonly arrays and tuples prevent accidental mutation",
+      "content": "Use `readonly T[]` or `ReadonlyArray<T>` to prevent array mutations. For function parameters that shouldn't be modified, always prefer readonly arrays. Note: spread creates a mutable copy if needed.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "immutability"],
+      "confidence": "high"
+    },
+    {
+      "title": "Index signatures allow any string key, even typos",
+      "content": "Objects with index signatures `[key: string]: T` accept any string property, including typos. This bypasses excess property checking. Use `Record<KnownKeys, T>` or mapped types when you have a known set of keys.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["typescript", "index-signatures"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use 'infer' in conditional types to extract nested types",
+      "content": "The 'infer' keyword extracts types within conditional types. Common patterns: `T extends Promise<infer U> ? U : T` (unwrap Promise), `T extends (infer U)[] ? U : T` (get array element type), `Parameters<T>` and `ReturnType<T>` use this internally.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["typescript", "conditional-types", "advanced"],
+      "confidence": "medium"
+    }
+  ]
+}

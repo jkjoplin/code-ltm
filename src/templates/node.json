@@ -1,0 +1,88 @@
+{
+  "version": "1.0",
+  "name": "Node.js Patterns & Gotchas",
+  "description": "Common Node.js patterns, gotchas, and best practices",
+  "scope": "global",
+  "learnings": [
+    {
+      "title": "Unhandled promise rejections crash Node.js",
+      "content": "Starting from Node.js 15+, unhandled promise rejections terminate the process. Always use try/catch with async/await, or .catch() with promises. Add a process-level handler for unexpected rejections: `process.on('unhandledRejection', handler)`",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["nodejs", "promises", "error-handling"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use 'node:' prefix for built-in modules",
+      "content": "Import Node.js built-in modules with the 'node:' prefix (e.g., `import fs from 'node:fs'`). This makes it explicit that you're using a built-in, prevents conflicts with npm packages of the same name, and is required for some modules like 'node:test'.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["nodejs", "imports", "modules"],
+      "confidence": "high"
+    },
+    {
+      "title": "fs.promises API for async file operations",
+      "content": "Use `import fs from 'node:fs/promises'` for promise-based file operations instead of callbacks. It's cleaner with async/await and avoids callback hell. The synchronous variants (fs.readFileSync) block the event loop.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["nodejs", "filesystem", "async"],
+      "confidence": "high"
+    },
+    {
+      "title": "ESM requires file extensions in imports",
+      "content": "When using ES modules (type: 'module' in package.json), you must include file extensions in relative imports: `import { foo } from './bar.js'`. This applies even to TypeScript files when targeting ESM (import .js, not .ts).",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["nodejs", "esm", "imports"],
+      "confidence": "high"
+    },
+    {
+      "title": "__dirname and __filename don't exist in ESM",
+      "content": "ES modules don't have __dirname and __filename. Use `import.meta.url` with URL/path utilities instead: `const __filename = fileURLToPath(import.meta.url); const __dirname = path.dirname(__filename);`",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["nodejs", "esm", "paths"],
+      "confidence": "high"
+    },
+    {
+      "title": "Environment variables are always strings",
+      "content": "process.env values are always strings or undefined. Never compare directly to numbers or booleans. Use explicit parsing: `parseInt(process.env.PORT, 10)` or `process.env.DEBUG === 'true'`. Consider using a config validation library like zod.",
+      "type": "gotcha",
+      "scope": "global",
+      "tags": ["nodejs", "environment", "configuration"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use AbortController for cancellable operations",
+      "content": "AbortController provides a standard way to cancel async operations. Pass the signal to fetch, timers, streams, and custom async functions. Check `signal.aborted` or listen to 'abort' event to handle cancellation gracefully.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["nodejs", "async", "cancellation"],
+      "confidence": "high"
+    },
+    {
+      "title": "Stream pipelines should use pipeline() for error handling",
+      "content": "Use `stream.pipeline()` instead of `.pipe()` for proper error handling and cleanup. pipeline() forwards errors and cleans up all streams on failure. Available as promise: `import { pipeline } from 'node:stream/promises'`",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["nodejs", "streams", "error-handling"],
+      "confidence": "high"
+    },
+    {
+      "title": "Child process stdio: 'inherit' for interactive commands",
+      "content": "When spawning processes that need terminal interaction (e.g., prompts, colors), use `stdio: 'inherit'` to connect to parent's stdio. For capturing output programmatically, use 'pipe' and handle stdout/stderr events.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["nodejs", "child-process", "cli"],
+      "confidence": "high"
+    },
+    {
+      "title": "Graceful shutdown: handle SIGTERM and SIGINT",
+      "content": "Always handle shutdown signals for production apps: `process.on('SIGTERM', gracefulShutdown)`. Close servers, database connections, and finish pending work before calling `process.exit()`. Docker sends SIGTERM by default.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["nodejs", "production", "signals"],
+      "confidence": "high"
+    }
+  ]
+}

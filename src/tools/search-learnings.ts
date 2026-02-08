@@ -1,6 +1,7 @@
 import type { LearningRepository } from "../db/repository.js";
 import { SearchLearningsInputSchema } from "../types.js";
 import { zodToJsonSchema } from "./add-learning.js";
+import { toCompactSummary, toCompactLearning, compactJson } from "./compact.js";
 
 export const searchLearningsTool = {
   name: "search_learnings",
@@ -13,6 +14,8 @@ Search modes:
 
 Returns summaries by default for context efficiency.
 Set include_content: true to get full content (uses more context).
+Set include_deprecated: true to include deprecated learnings.
+Set compact: true for abbreviated keys (saves tokens).
 
 semantic_weight (0-1) controls the balance in hybrid mode:
 - 0 = pure keyword
@@ -38,6 +41,7 @@ export async function handleSearchLearnings(
       limit: input.limit,
       mode: input.mode,
       semantic_weight: input.semantic_weight,
+      include_deprecated: input.include_deprecated,
     });
 
     // If include_content is true, fetch full content
@@ -49,6 +53,21 @@ export async function handleSearchLearnings(
           relevance_score: summary.relevance_score,
         };
       });
+
+      if (input.compact) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: compactJson({
+                count: fullLearnings.length,
+                mode: input.mode,
+                learnings: fullLearnings.map((l) => l ? toCompactLearning(l as any) : null),
+              }),
+            },
+          ],
+        };
+      }
 
       return {
         content: [
@@ -64,6 +83,21 @@ export async function handleSearchLearnings(
               null,
               2
             ),
+          },
+        ],
+      };
+    }
+
+    if (input.compact) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: compactJson({
+              count: learnings.length,
+              mode: input.mode,
+              learnings: learnings.map(toCompactSummary),
+            }),
           },
         ],
       };

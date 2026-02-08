@@ -8,6 +8,7 @@ export const LearningTypeSchema = z.enum([
   "documentation",
   "tip",
   "suggestion",
+  "rule",
 ]);
 export type LearningType = z.infer<typeof LearningTypeSchema>;
 
@@ -45,6 +46,12 @@ export const LearningSchema = z.object({
   updated_at: z.string().datetime(),
   created_by: z.string(),
   version: z.number().int().positive(),
+  deprecated: z.boolean().default(false),
+  deprecated_reason: z.string().nullable().optional(),
+  deprecated_at: z.string().nullable().optional(),
+  access_count: z.number().int().nonnegative().default(0),
+  last_accessed_at: z.string().nullable().optional(),
+  applies_to: z.array(z.string()).nullable().optional(),
 });
 export type Learning = z.infer<typeof LearningSchema>;
 
@@ -60,6 +67,7 @@ export const AddLearningInputSchema = z.object({
   related_ids: z.array(z.string().uuid()).default([]),
   confidence: ConfidenceSchema.default("medium"),
   created_by: z.string().default("unknown-agent"),
+  applies_to: z.array(z.string()).nullable().optional(),
 });
 export type AddLearningInput = z.infer<typeof AddLearningInputSchema>;
 
@@ -74,6 +82,9 @@ export const UpdateLearningInputSchema = z.object({
   file_references: z.array(FileRefSchema).optional(),
   related_ids: z.array(z.string().uuid()).optional(),
   confidence: ConfidenceSchema.optional(),
+  deprecated: z.boolean().optional(),
+  deprecated_reason: z.string().nullable().optional(),
+  applies_to: z.array(z.string()).nullable().optional(),
 });
 export type UpdateLearningInput = z.infer<typeof UpdateLearningInputSchema>;
 
@@ -84,6 +95,8 @@ export const ListLearningsInputSchema = z.object({
   project_path: z.string().optional(),
   limit: z.number().int().positive().max(100).default(20),
   offset: z.number().int().nonnegative().default(0),
+  compact: z.boolean().default(false),
+  include_deprecated: z.boolean().default(false),
 });
 export type ListLearningsInput = z.infer<typeof ListLearningsInputSchema>;
 
@@ -97,6 +110,8 @@ export const SearchLearningsInputSchema = z.object({
   include_content: z.boolean().default(false),
   mode: SearchModeSchema.default("hybrid"),
   semantic_weight: z.number().min(0).max(1).default(0.5),
+  compact: z.boolean().default(false),
+  include_deprecated: z.boolean().default(false),
 });
 export type SearchLearningsInput = z.infer<typeof SearchLearningsInputSchema>;
 

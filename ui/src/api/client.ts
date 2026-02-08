@@ -5,7 +5,8 @@ export type LearningType =
   | "investigation"
   | "documentation"
   | "tip"
-  | "suggestion";
+  | "suggestion"
+  | "rule";
 export type Scope = "project" | "cross-project" | "global";
 export type Confidence = "low" | "medium" | "high";
 export type SearchMode = "keyword" | "semantic" | "hybrid";
@@ -32,6 +33,12 @@ export interface Learning {
   updated_at: string;
   created_by: string;
   version: number;
+  deprecated?: boolean;
+  deprecated_reason?: string | null;
+  deprecated_at?: string | null;
+  access_count?: number;
+  last_accessed_at?: string | null;
+  applies_to?: string[] | null;
 }
 
 export interface LearningSummary {

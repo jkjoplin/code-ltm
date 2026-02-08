@@ -28,6 +28,7 @@ export interface ListOptions {
   project_path?: string;
   limit: number;
   offset: number;
+  include_deprecated?: boolean;
 }
 
 export interface SearchOptions {
@@ -39,6 +40,7 @@ export interface SearchOptions {
   limit: number;
   mode?: SearchMode;
   semantic_weight?: number;
+  include_deprecated?: boolean;
 }
 
 export interface SemanticSearchResult {
@@ -78,11 +80,17 @@ export class LearningRepository {
       updated_at: now,
       created_by: input.created_by,
       version: 1,
+      deprecated: false,
+      deprecated_reason: null,
+      deprecated_at: null,
+      access_count: 0,
+      last_accessed_at: null,
+      applies_to: input.applies_to ?? null,
     };
 
     const insertLearning = this.db.prepare(`
-      INSERT INTO learnings (id, title, content, type, scope, project_path, confidence, created_at, updated_at, created_by, version)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO learnings (id, title, content, type, scope, project_path, confidence, created_at, updated_at, created_by, version, applies_to)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertTag = this.db.prepare(`
@@ -110,7 +118,8 @@ export class LearningRepository {
         learning.created_at,
         learning.updated_at,
         learning.created_by,
-        learning.version
+        learning.version,
+        learning.applies_to ? JSON.stringify(learning.applies_to) : null
       );
 
       for (const tag of learning.tags) {
@@ -142,7 +151,7 @@ export class LearningRepository {
     return learning;
   }
 
-  get(id: string): Learning | null {
+  get(id: string, recordAccess = false): Learning | null {
     const row = this.db
       .prepare(
         `
@@ -152,6 +161,10 @@ export class LearningRepository {
       .get(id) as LearningRow | undefined;
 
     if (!row) return null;
+
+    if (recordAccess) {
+      this.recordAccess([id]);
+    }
 
     return this.hydrateLearning(row);
   }
@@ -190,6 +203,25 @@ export class LearningRepository {
     if (input.confidence !== undefined) {
       updates.push("confidence = ?");
       values.push(input.confidence);
+    }
+    if (input.deprecated !== undefined) {
+      updates.push("deprecated = ?");
+      values.push(input.deprecated ? 1 : 0);
+      if (input.deprecated) {
+        updates.push("deprecated_at = ?");
+        values.push(new Date().toISOString());
+      } else {
+        updates.push("deprecated_at = NULL");
+        updates.push("deprecated_reason = NULL");
+      }
+    }
+    if (input.deprecated_reason !== undefined) {
+      updates.push("deprecated_reason = ?");
+      values.push(input.deprecated_reason);
+    }
+    if (input.applies_to !== undefined) {
+      updates.push("applies_to = ?");
+      values.push(input.applies_to ? JSON.stringify(input.applies_to) : null);
     }
 
     updates.push("updated_at = ?");
@@ -281,6 +313,10 @@ export class LearningRepository {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
+    if (!input.include_deprecated) {
+      conditions.push("l.deprecated = 0");
+    }
+
     if (input.scope) {
       conditions.push("l.scope = ?");
       params.push(input.scope);
@@ -333,6 +369,10 @@ export class LearningRepository {
     // FTS search
     conditions.push("learnings_fts MATCH ?");
     params.push(input.query);
+
+    if (!input.include_deprecated) {
+      conditions.push("l.deprecated = 0");
+    }
 
     if (input.scope) {
       conditions.push("l.scope = ?");
@@ -541,6 +581,10 @@ export class LearningRepository {
     conditions.push("learnings_fts MATCH ?");
     params.push(input.query);
 
+    if (!input.include_deprecated) {
+      conditions.push("l.deprecated = 0");
+    }
+
     if (input.scope) {
       conditions.push("l.scope = ?");
       params.push(input.scope);
@@ -628,13 +672,15 @@ export class LearningRepository {
       scores.set(result.id, normalized);
     }
 
-    // Filter by scope, type, project_path, tags if specified
-    if (input.scope || input.type || input.project_path || input.tags?.length) {
+    // Filter by scope, type, project_path, tags, deprecated if specified
+    const needsFilter = input.scope || input.type || input.project_path || input.tags?.length || !input.include_deprecated;
+    if (needsFilter) {
       const filteredScores = new Map<string, number>();
       for (const [id, score] of scores) {
         const learning = this.get(id);
         if (!learning) continue;
 
+        if (!input.include_deprecated && learning.deprecated) continue;
         if (input.scope && learning.scope !== input.scope) continue;
         if (input.type && learning.type !== input.type) continue;
         if (input.project_path && learning.project_path !== input.project_path)
@@ -687,7 +733,7 @@ export class LearningRepository {
     return combined;
   }
 
-  private getSummariesByIds(ids: string[]): LearningSummary[] {
+  getSummariesByIds(ids: string[]): LearningSummary[] {
     if (ids.length === 0) return [];
 
     const summaries: LearningSummary[] = [];
@@ -702,6 +748,9 @@ export class LearningRepository {
         summaries.push(this.hydrateSummary(row));
       }
     }
+
+    // Record access for search results
+    this.recordAccess(ids);
 
     return summaries;
   }
@@ -748,6 +797,18 @@ export class LearningRepository {
     ).count;
 
     return { total, embedded };
+  }
+
+  getProjects(): string[] {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT project_path
+         FROM learnings
+         WHERE project_path IS NOT NULL
+         ORDER BY project_path`
+      )
+      .all() as { project_path: string }[];
+    return rows.map((r) => r.project_path);
   }
 
   // ==================== VERSION HISTORY METHODS ====================
@@ -1162,6 +1223,83 @@ export class LearningRepository {
     return { nodes, edges };
   }
 
+  recordAccess(ids: string[]): void {
+    if (ids.length === 0) return;
+    const now = new Date().toISOString();
+    const stmt = this.db.prepare(
+      `UPDATE learnings SET access_count = access_count + 1, last_accessed_at = ? WHERE id = ?`
+    );
+    this.db.transaction(() => {
+      for (const id of ids) {
+        stmt.run(now, id);
+      }
+    })();
+  }
+
+  findByFileRefs(filePaths: string[], limit = 20): Learning[] {
+    if (filePaths.length === 0) return [];
+
+    const placeholders = filePaths.map(() => "?").join(", ");
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT l.* FROM learnings l
+         JOIN file_refs fr ON fr.learning_id = l.id
+         WHERE fr.path IN (${placeholders}) AND l.deprecated = 0
+         LIMIT ?`
+      )
+      .all(...filePaths, limit) as LearningRow[];
+
+    return rows.map((row) => this.hydrateLearning(row));
+  }
+
+  findMatchingRules(filePaths: string[], projectPath?: string): Learning[] {
+    const conditions: string[] = ["l.type = 'rule'", "l.deprecated = 0", "l.applies_to IS NOT NULL"];
+    const params: unknown[] = [];
+
+    if (projectPath) {
+      conditions.push("(l.project_path IS NULL OR l.project_path = ?)");
+      params.push(projectPath);
+    }
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM learnings l WHERE ${conditions.join(" AND ")}`
+      )
+      .all(...params) as LearningRow[];
+
+    // Filter by glob matching in JS
+    const matched: Learning[] = [];
+    for (const row of rows) {
+      const appliesTo: string[] = row.applies_to ? JSON.parse(row.applies_to) : [];
+      if (appliesTo.length === 0) continue;
+
+      const isMatch = filePaths.some((filePath) =>
+        appliesTo.some((pattern) => this.globMatch(filePath, pattern))
+      );
+
+      if (isMatch) {
+        matched.push(this.hydrateLearning(row));
+      }
+    }
+
+    return matched;
+  }
+
+  private globMatch(filePath: string, pattern: string): boolean {
+    // Simple glob matching: supports * and ** patterns
+    // Convert glob to regex
+    const regexStr = pattern
+      .replace(/\./g, "\\.")
+      .replace(/\*\*/g, "{{GLOBSTAR}}")
+      .replace(/\*/g, "[^/]*")
+      .replace(/\{\{GLOBSTAR\}\}/g, ".*");
+    try {
+      return new RegExp(`^${regexStr}$`).test(filePath) || new RegExp(`(^|/)${regexStr}$`).test(filePath);
+    } catch {
+      return false;
+    }
+  }
+
   private hydrateVersion(row: VersionRow): LearningVersion {
     return {
       id: row.id,
@@ -1217,6 +1355,12 @@ export class LearningRepository {
       updated_at: row.updated_at,
       created_by: row.created_by,
       version: row.version,
+      deprecated: row.deprecated === 1,
+      deprecated_reason: row.deprecated_reason ?? null,
+      deprecated_at: row.deprecated_at ?? null,
+      access_count: row.access_count,
+      last_accessed_at: row.last_accessed_at ?? null,
+      applies_to: row.applies_to ? JSON.parse(row.applies_to) : null,
     };
   }
 
@@ -1252,6 +1396,12 @@ interface LearningRow {
   updated_at: string;
   created_by: string;
   version: number;
+  deprecated: number;
+  deprecated_reason: string | null;
+  deprecated_at: string | null;
+  access_count: number;
+  last_accessed_at: string | null;
+  applies_to: string | null;
 }
 
 interface FileRefRow {

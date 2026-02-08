@@ -13,6 +13,7 @@ Types:
 - documentation: API docs, architecture notes
 - tip: Quick shortcut or useful trick
 - suggestion: Codebase improvement idea (prefer add_suggestion for richer categorization)
+- rule: Always-apply directive for specific file patterns (prefer add_rule for rules)
 
 Scopes:
 - project: Specific to current project only
@@ -77,6 +78,11 @@ function zodTypeToJsonSchema(zodType: z.ZodTypeAny): object {
 
   // Handle optional
   if (def.typeName === "ZodOptional") {
+    return zodTypeToJsonSchema(def.innerType);
+  }
+
+  // Handle nullable
+  if (def.typeName === "ZodNullable") {
     return zodTypeToJsonSchema(def.innerType);
   }
 

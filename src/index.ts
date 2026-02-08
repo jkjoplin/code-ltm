@@ -29,6 +29,16 @@ import {
   handleReembedLearnings,
   addSuggestionTool,
   handleAddSuggestion,
+  batchGetTool,
+  handleBatchGet,
+  addRuleTool,
+  handleAddRule,
+  getContextTool,
+  handleGetContext,
+  recallTool,
+  handleRecall,
+  getDigestTool,
+  handleGetDigest,
 } from "./tools/index.js";
 
 // Load configuration first
@@ -68,6 +78,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       linkLearningsTool,
       reembedLearningsTool,
       addSuggestionTool,
+      batchGetTool,
+      addRuleTool,
+      getContextTool,
+      recallTool,
+      getDigestTool,
     ],
   };
 });
@@ -96,6 +111,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return handleReembedLearnings(repo, args);
       case "add_suggestion":
         return handleAddSuggestion(repo, args);
+      case "batch_get":
+        return handleBatchGet(repo, args);
+      case "add_rule":
+        return handleAddRule(repo, args);
+      case "get_context":
+        return handleGetContext(repo, args);
+      case "recall":
+        return handleRecall(repo, args);
+      case "get_digest":
+        return handleGetDigest(repo, args);
       default:
         return {
           content: [

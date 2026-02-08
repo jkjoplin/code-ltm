@@ -42,4 +42,5 @@ export interface ScoredLearning {
   tags: string[];
   created_at: string;
   score: number;
+  access_count?: number;
 }

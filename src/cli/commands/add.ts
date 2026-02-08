@@ -16,6 +16,7 @@ const TYPES: LearningType[] = [
   "documentation",
   "investigation",
   "suggestion",
+  "rule",
 ];
 const SCOPES: Scope[] = ["project", "cross-project", "global"];
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];

@@ -12,3 +12,5 @@ coverage/
 .idea/
 .vscode/
 *.tsbuildinfo
+AGENTS.local.md
+CLAUDE.local.md

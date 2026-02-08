@@ -4,7 +4,7 @@ import SearchBar from "../components/SearchBar";
 import FilterPanel from "../components/FilterPanel";
 import LearningList from "../components/LearningList";
 import LearningForm from "../components/LearningForm";
-import { useLearnings, useTags, useCreateLearning, useStats } from "../hooks/useLearnings";
+import { useLearnings, useTags, useProjects, useCreateLearning, useStats } from "../hooks/useLearnings";
 import { useSearch } from "../hooks/useSearch";
 import type { Scope, LearningType, SearchMode, CreateLearningInput } from "../api/client";
 
@@ -20,6 +20,7 @@ export default function HomePage() {
   const [scope, setScope] = useState<Scope | undefined>();
   const [types, setTypes] = useState<LearningType[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [project, setProject] = useState<string | undefined>();
 
   // Pagination
   const [offset, setOffset] = useState(0);
@@ -31,6 +32,7 @@ export default function HomePage() {
   // Queries
   const { data: statsData } = useStats();
   const { data: tagsData } = useTags();
+  const { data: projectsData } = useProjects();
   const createMutation = useCreateLearning();
 
   // Get learnings - either from search or list
@@ -40,6 +42,7 @@ export default function HomePage() {
     scope,
     type: types.length === 1 ? types[0] : undefined,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
+    project_path: project,
     limit,
     offset,
   });
@@ -51,6 +54,7 @@ export default function HomePage() {
           scope,
           type: types.length === 1 ? types[0] : undefined,
           tags: selectedTags.length > 0 ? selectedTags : undefined,
+          project_path: project,
           limit,
           mode: searchMode,
           semantic_weight: semanticWeight,
@@ -133,6 +137,12 @@ export default function HomePage() {
               setOffset(0);
             }}
             availableTags={tagsData ?? []}
+            project={project}
+            onProjectChange={(p) => {
+              setProject(p);
+              setOffset(0);
+            }}
+            availableProjects={projectsData ?? []}
           />
         </aside>
 

@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import fs from "node:fs";
+import path from "node:path";
 import ora from "ora";
 import { createDatabase } from "../../db/schema.js";
 import { LearningRepository } from "../../db/repository.js";
@@ -40,7 +41,7 @@ export function registerDigestCommand(program: Command): void {
           scope: opts.scope as Scope | undefined,
           type: opts.type as LearningType | undefined,
           tags,
-          project_path: opts.project,
+          project_path: opts.project ? path.resolve(opts.project) : undefined,
           min_confidence: opts.minConfidence as Confidence,
           require_tag: opts.requireTag,
           format: opts.format as DigestFormat,

@@ -3,13 +3,14 @@ import type { Confidence, LearningType } from "../types.js";
 import { formatDigest } from "./formatter.js";
 import type { DigestOptions, DigestResult, ScoredLearning } from "./types.js";
 
-const CONFIDENCE_ORDER: Record<Confidence, number> = {
+export const CONFIDENCE_ORDER: Record<Confidence, number> = {
   low: 0,
   medium: 1,
   high: 2,
 };
 
-const TYPE_PRIORITY: Record<LearningType, number> = {
+export const TYPE_PRIORITY: Record<LearningType, number> = {
+  rule: 6,
   gotcha: 5,
   pattern: 4,
   tip: 3,
@@ -38,7 +39,7 @@ export function generateDigest(
 ): DigestResult {
   const opts: DigestOptions = { ...DEFAULT_OPTIONS, ...options };
 
-  // 1. Query DB with filters
+  // 1. Query DB with filters (exclude deprecated)
   const summaries = repo.list({
     scope: opts.scope,
     type: opts.type,
@@ -46,6 +47,7 @@ export function generateDigest(
     project_path: opts.project_path,
     limit: 10000,
     offset: 0,
+    include_deprecated: false,
   });
 
   // 2. Filter by min_confidence and require_tag in-memory
@@ -59,18 +61,19 @@ export function generateDigest(
 
   const totalMatched = filtered.length;
 
-  // 3. Fetch full content for each
+  // 3. Fetch full content for each (skip deprecated)
   const scoredLearnings: ScoredLearning[] = [];
   for (const summary of filtered) {
     const full = repo.get(summary.id);
-    if (!full) continue;
+    if (!full || full.deprecated) continue;
 
     // 4. Score each learning
     const typePriority = TYPE_PRIORITY[full.type] * 10;
     const confidenceBoost = CONFIDENCE_ORDER[full.confidence] * 5;
     const digestTagBonus = full.tags.includes("digest") ? 20 : 0;
     const recencyBonus = calculateRecencyBonus(full.created_at);
-    const score = typePriority + confidenceBoost + digestTagBonus + recencyBonus;
+    const accessBonus = Math.min(full.access_count, 10);
+    const score = typePriority + confidenceBoost + digestTagBonus + recencyBonus + accessBonus;
 
     scoredLearnings.push({
       id: full.id,
@@ -82,6 +85,7 @@ export function generateDigest(
       tags: full.tags,
       created_at: full.created_at,
       score,
+      access_count: full.access_count,
     });
   }
 
@@ -92,7 +96,7 @@ export function generateDigest(
   return formatDigest(scoredLearnings, opts, totalMatched);
 }
 
-function calculateRecencyBonus(createdAt: string): number {
+export function calculateRecencyBonus(createdAt: string): number {
   const ageMs = Date.now() - new Date(createdAt).getTime();
   const ageDays = ageMs / (1000 * 60 * 60 * 24);
   // 0-5 bonus: 5 for today, decaying over 30 days

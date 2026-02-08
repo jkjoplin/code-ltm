@@ -128,6 +128,12 @@ app.get("/api/tags", (_req, res) => {
   res.json(rows.map((r) => r.tag));
 });
 
+// GET /api/projects - Get all unique project paths
+app.get("/api/projects", (_req, res) => {
+  const projects = repo.getProjects();
+  res.json(projects);
+});
+
 // Error handler (must be last)
 app.use(errorHandler);
 

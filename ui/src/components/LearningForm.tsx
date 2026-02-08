@@ -28,7 +28,7 @@ interface LearningFormEditProps {
 
 type LearningFormProps = LearningFormCreateProps | LearningFormEditProps;
 
-const TYPES: LearningType[] = ["gotcha", "pattern", "investigation", "documentation", "tip", "suggestion"];
+const TYPES: LearningType[] = ["gotcha", "pattern", "investigation", "documentation", "tip", "suggestion", "rule"];
 const SCOPES: Scope[] = ["global", "cross-project", "project"];
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];
 
@@ -47,6 +47,7 @@ export default function LearningForm({
   const [confidence, setConfidence] = useState<Confidence>(learning?.confidence ?? "medium");
   const [fileRefs, setFileRefs] = useState<FileRef[]>(learning?.file_references ?? []);
   const [newRefPath, setNewRefPath] = useState("");
+  const [appliesTo, setAppliesTo] = useState(learning?.applies_to?.join(", ") ?? "");
   const [similarLearnings, setSimilarLearnings] = useState<SimilarLearning[]>([]);
   const [checkDebounceTimer, setCheckDebounceTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
 
@@ -275,6 +276,27 @@ export default function LearningForm({
               required={scope === "project"}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
               placeholder="/path/to/project"
+            />
+          </div>
+        )}
+
+        {/* Applies To (conditional on type=rule) */}
+        {type === "rule" && (
+          <div>
+            <label
+              htmlFor="appliesTo"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Applies To (glob patterns, comma-separated) *
+            </label>
+            <input
+              id="appliesTo"
+              type="text"
+              value={appliesTo}
+              onChange={(e) => setAppliesTo(e.target.value)}
+              required={type === "rule"}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+              placeholder="src/api/**, *.config.ts"
             />
           </div>
         )}

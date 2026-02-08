@@ -7,7 +7,11 @@ export const updateLearningTool = {
   description: `Update an existing learning. Only provide fields you want to change.
 
 The learning's version will be incremented automatically.
-Tags, file_references, and related_ids will be completely replaced if provided.`,
+Tags, file_references, and related_ids will be completely replaced if provided.
+
+To deprecate a learning, set deprecated: true with an optional deprecated_reason.
+Deprecated learnings are hidden from default list/search results.
+To un-deprecate, set deprecated: false.`,
   inputSchema: zodToJsonSchema(UpdateLearningInputSchema),
 };
 

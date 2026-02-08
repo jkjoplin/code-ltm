@@ -14,14 +14,20 @@ function createTestDb(): Database.Database {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       content TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('gotcha', 'pattern', 'investigation', 'documentation', 'tip')),
+      type TEXT NOT NULL CHECK (type IN ('gotcha', 'pattern', 'investigation', 'documentation', 'tip', 'suggestion', 'rule')),
       scope TEXT NOT NULL CHECK (scope IN ('project', 'cross-project', 'global')),
       project_path TEXT,
       confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       created_by TEXT NOT NULL,
-      version INTEGER NOT NULL DEFAULT 1
+      version INTEGER NOT NULL DEFAULT 1,
+      deprecated INTEGER NOT NULL DEFAULT 0,
+      deprecated_reason TEXT,
+      deprecated_at TEXT,
+      access_count INTEGER NOT NULL DEFAULT 0,
+      last_accessed_at TEXT,
+      applies_to TEXT
     );
 
     CREATE TABLE IF NOT EXISTS learning_tags (

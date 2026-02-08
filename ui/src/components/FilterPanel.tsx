@@ -26,6 +26,7 @@ const SCOPES: Array<{ value: Scope | undefined; label: string }> = [
 ];
 
 const TYPES: Array<{ value: LearningType; label: string }> = [
+  { value: "rule", label: "Rule" },
   { value: "pattern", label: "Pattern" },
   { value: "gotcha", label: "Gotcha" },
   { value: "tip", label: "Tip" },

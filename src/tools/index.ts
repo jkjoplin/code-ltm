@@ -7,3 +7,8 @@ export { searchLearningsTool, handleSearchLearnings } from "./search-learnings.j
 export { linkLearningsTool, handleLinkLearnings } from "./link-learnings.js";
 export { reembedLearningsTool, handleReembedLearnings } from "./reembed.js";
 export { addSuggestionTool, handleAddSuggestion } from "./add-suggestion.js";
+export { batchGetTool, handleBatchGet } from "./batch-get.js";
+export { addRuleTool, handleAddRule } from "./add-rule.js";
+export { getContextTool, handleGetContext } from "./get-context.js";
+export { recallTool, handleRecall } from "./recall.js";
+export { getDigestTool, handleGetDigest } from "./get-digest.js";

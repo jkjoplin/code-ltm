@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "name": "Generic Code-LTM Tips",
+  "description": "Universal tips for using code-ltm effectively",
+  "scope": "global",
+  "learnings": [
+    {
+      "title": "Search before adding new learnings",
+      "content": "Before adding a new learning, use search_learnings to check if similar knowledge already exists. This prevents duplication and helps you find related context that might inform your current work.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["code-ltm", "workflow"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use specific tags for better discoverability",
+      "content": "When creating learnings, use specific, consistent tags rather than generic ones. For example, use 'react-hooks' instead of just 'react', or 'sql-optimization' instead of just 'database'. This makes semantic search more effective.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["code-ltm", "organization"],
+      "confidence": "high"
+    },
+    {
+      "title": "Record gotchas immediately when discovered",
+      "content": "When you encounter a non-obvious bug or behavior that took time to debug, record it as a gotcha immediately. Future sessions will benefit from knowing about edge cases and surprising behaviors before they waste time rediscovering them.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["code-ltm", "debugging"],
+      "confidence": "high"
+    },
+    {
+      "title": "Link related learnings together",
+      "content": "Use link_learnings to connect related concepts. For example, link a gotcha about a library to the pattern that avoids it, or link an investigation to the documentation that explains the root cause. This creates a knowledge graph that's easier to navigate.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["code-ltm", "organization"],
+      "confidence": "medium"
+    },
+    {
+      "title": "Include file references for code-specific learnings",
+      "content": "When a learning relates to specific code, include file_references with the relevant file paths and line numbers. This helps future sessions quickly navigate to the relevant code context.",
+      "type": "tip",
+      "scope": "global",
+      "tags": ["code-ltm", "context"],
+      "confidence": "high"
+    },
+    {
+      "title": "Use project scope for codebase-specific patterns",
+      "content": "Set scope to 'project' for learnings that only apply to a specific codebase (like project-specific conventions or local configuration). Use 'global' for universal knowledge that applies everywhere.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["code-ltm", "scope"],
+      "confidence": "high"
+    },
+    {
+      "title": "Update confidence as learnings are validated",
+      "content": "Start with 'medium' confidence for new learnings. After they've been validated through use, update to 'high'. If a learning turns out to be incorrect or outdated, either update its content or delete it rather than leaving stale information.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["code-ltm", "maintenance"],
+      "confidence": "medium"
+    },
+    {
+      "title": "Prefer concise titles with detailed content",
+      "content": "Learning titles should be scannable summaries (under 200 chars). Put detailed explanations, code examples, and context in the content field. This makes list views useful while preserving full context when needed.",
+      "type": "pattern",
+      "scope": "global",
+      "tags": ["code-ltm", "writing"],
+      "confidence": "high"
+    }
+  ]
+}

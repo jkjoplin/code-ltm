@@ -262,6 +262,76 @@ function getMigrations(): Migration[] {
         PRAGMA foreign_keys = ON;
       `,
     },
+    {
+      name: "005_add_rules_usage_deprecation",
+      sql: `
+        -- Add 'rule' type, deprecation fields, usage tracking, and applies_to
+        -- SQLite requires table recreation to modify CHECK constraints
+        PRAGMA foreign_keys = OFF;
+
+        CREATE TABLE learnings_new (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          type TEXT NOT NULL CHECK (type IN ('gotcha', 'pattern', 'investigation', 'documentation', 'tip', 'suggestion', 'rule')),
+          scope TEXT NOT NULL CHECK (scope IN ('project', 'cross-project', 'global')),
+          project_path TEXT,
+          confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          created_by TEXT NOT NULL,
+          version INTEGER NOT NULL DEFAULT 1,
+          deprecated INTEGER NOT NULL DEFAULT 0,
+          deprecated_reason TEXT,
+          deprecated_at TEXT,
+          access_count INTEGER NOT NULL DEFAULT 0,
+          last_accessed_at TEXT,
+          applies_to TEXT
+        );
+
+        INSERT INTO learnings_new SELECT *, 0, NULL, NULL, 0, NULL, NULL FROM learnings;
+
+        -- Drop old triggers
+        DROP TRIGGER IF EXISTS learnings_ai;
+        DROP TRIGGER IF EXISTS learnings_ad;
+        DROP TRIGGER IF EXISTS learnings_au;
+
+        -- Drop old table and rename
+        DROP TABLE learnings;
+        ALTER TABLE learnings_new RENAME TO learnings;
+
+        -- Recreate indexes
+        CREATE INDEX IF NOT EXISTS idx_learnings_scope ON learnings(scope);
+        CREATE INDEX IF NOT EXISTS idx_learnings_type ON learnings(type);
+        CREATE INDEX IF NOT EXISTS idx_learnings_project_path ON learnings(project_path);
+        CREATE INDEX IF NOT EXISTS idx_learnings_created_at ON learnings(created_at);
+        CREATE INDEX IF NOT EXISTS idx_learnings_deprecated ON learnings(deprecated);
+        CREATE INDEX IF NOT EXISTS idx_file_refs_path ON file_refs(path);
+
+        -- Rebuild FTS index
+        INSERT INTO learnings_fts(learnings_fts) VALUES('rebuild');
+
+        -- Recreate FTS sync triggers
+        CREATE TRIGGER learnings_ai AFTER INSERT ON learnings BEGIN
+          INSERT INTO learnings_fts(rowid, title, content)
+          VALUES (NEW.rowid, NEW.title, NEW.content);
+        END;
+
+        CREATE TRIGGER learnings_ad AFTER DELETE ON learnings BEGIN
+          INSERT INTO learnings_fts(learnings_fts, rowid, title, content)
+          VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
+        END;
+
+        CREATE TRIGGER learnings_au AFTER UPDATE ON learnings BEGIN
+          INSERT INTO learnings_fts(learnings_fts, rowid, title, content)
+          VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
+          INSERT INTO learnings_fts(rowid, title, content)
+          VALUES (NEW.rowid, NEW.title, NEW.content);
+        END;
+
+        PRAGMA foreign_keys = ON;
+      `,
+    },
   ];
 }
 

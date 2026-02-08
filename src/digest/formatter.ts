@@ -1,9 +1,10 @@
 import type { LearningType } from "../types.js";
 import type { DigestOptions, DigestResult, DigestStats, ScoredLearning } from "./types.js";
 
-const TYPE_ORDER: LearningType[] = ["gotcha", "pattern", "tip", "documentation", "investigation", "suggestion"];
+const TYPE_ORDER: LearningType[] = ["rule", "gotcha", "pattern", "tip", "documentation", "investigation", "suggestion"];
 
 const TYPE_LABELS: Record<LearningType, string> = {
+  rule: "Rules",
   gotcha: "Gotchas",
   pattern: "Patterns",
   tip: "Tips",
