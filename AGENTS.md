@@ -36,6 +36,7 @@ Use `confidence: "high"` or tag with `digest` to ensure it surfaces in passive c
 | `investigation` | Debugging findings, root cause analyses |
 | `documentation` | How things work, API behaviors |
 | `tip` | Useful shortcuts, productivity hints |
+| `suggestion` | Codebase improvement ideas, optimization/refactor/architecture/feature suggestions |
 
 ## Project Structure
 

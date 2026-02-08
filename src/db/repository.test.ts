@@ -17,7 +17,7 @@ function createTestDb(): Database.Database {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       content TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('gotcha', 'pattern', 'investigation', 'documentation', 'tip')),
+      type TEXT NOT NULL CHECK (type IN ('gotcha', 'pattern', 'investigation', 'documentation', 'tip', 'suggestion')),
       scope TEXT NOT NULL CHECK (scope IN ('project', 'cross-project', 'global')),
       project_path TEXT,
       confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),

@@ -7,6 +7,7 @@ import {
   ScopeSchema,
   SearchModeSchema,
 } from "../../types.js";
+import type { LearningType } from "../../types.js";
 import { createHttpError } from "../middleware/error-handler.js";
 import { z } from "zod";
 
@@ -48,7 +49,7 @@ export function learningsRouter(repo: LearningRepository): Router {
 
       const learnings = repo.list({
         scope: scope as "project" | "cross-project" | "global" | undefined,
-        type: type as "gotcha" | "pattern" | "investigation" | "documentation" | "tip" | undefined,
+        type: type as LearningType | undefined,
         tags,
         project_path: projectPath,
         limit: Math.min(limit, 100),
@@ -94,7 +95,7 @@ export function learningsRouter(repo: LearningRepository): Router {
       const learnings = await repo.hybridSearch({
         query,
         scope: scope as "project" | "cross-project" | "global" | undefined,
-        type: type as "gotcha" | "pattern" | "investigation" | "documentation" | "tip" | undefined,
+        type: type as LearningType | undefined,
         tags,
         project_path: projectPath,
         limit: Math.min(limit, 100),

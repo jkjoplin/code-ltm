@@ -12,6 +12,7 @@ Types:
 - investigation: Debugging steps or root cause analysis
 - documentation: API docs, architecture notes
 - tip: Quick shortcut or useful trick
+- suggestion: Codebase improvement idea (prefer add_suggestion for richer categorization)
 
 Scopes:
 - project: Specific to current project only

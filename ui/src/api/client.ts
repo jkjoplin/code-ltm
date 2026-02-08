@@ -4,7 +4,8 @@ export type LearningType =
   | "pattern"
   | "investigation"
   | "documentation"
-  | "tip";
+  | "tip"
+  | "suggestion";
 export type Scope = "project" | "cross-project" | "global";
 export type Confidence = "low" | "medium" | "high";
 export type SearchMode = "keyword" | "semantic" | "hybrid";
@@ -273,6 +274,12 @@ export const api = {
   // Get all tags
   async getTags(): Promise<string[]> {
     const response = await fetch(`${API_BASE}/tags`);
+    return handleResponse(response);
+  },
+
+  // Get all unique project paths
+  async getProjects(): Promise<string[]> {
+    const response = await fetch(`${API_BASE}/projects`);
     return handleResponse(response);
   },
 

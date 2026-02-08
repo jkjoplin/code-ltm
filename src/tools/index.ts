@@ -6,3 +6,4 @@ export { listLearningsTool, handleListLearnings } from "./list-learnings.js";
 export { searchLearningsTool, handleSearchLearnings } from "./search-learnings.js";
 export { linkLearningsTool, handleLinkLearnings } from "./link-learnings.js";
 export { reembedLearningsTool, handleReembedLearnings } from "./reembed.js";
+export { addSuggestionTool, handleAddSuggestion } from "./add-suggestion.js";

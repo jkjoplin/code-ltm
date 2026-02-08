@@ -28,7 +28,7 @@ interface LearningFormEditProps {
 
 type LearningFormProps = LearningFormCreateProps | LearningFormEditProps;
 
-const TYPES: LearningType[] = ["gotcha", "pattern", "investigation", "documentation", "tip"];
+const TYPES: LearningType[] = ["gotcha", "pattern", "investigation", "documentation", "tip", "suggestion"];
 const SCOPES: Scope[] = ["global", "cross-project", "project"];
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];
 

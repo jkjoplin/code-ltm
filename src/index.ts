@@ -27,6 +27,8 @@ import {
   handleLinkLearnings,
   reembedLearningsTool,
   handleReembedLearnings,
+  addSuggestionTool,
+  handleAddSuggestion,
 } from "./tools/index.js";
 
 // Load configuration first
@@ -65,6 +67,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       searchLearningsTool,
       linkLearningsTool,
       reembedLearningsTool,
+      addSuggestionTool,
     ],
   };
 });
@@ -91,6 +94,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return handleLinkLearnings(repo, args);
       case "reembed_learnings":
         return handleReembedLearnings(repo, args);
+      case "add_suggestion":
+        return handleAddSuggestion(repo, args);
       default:
         return {
           content: [

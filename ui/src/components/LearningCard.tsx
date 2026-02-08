@@ -11,6 +11,7 @@ const TYPE_COLORS: Record<string, string> = {
   tip: "bg-green-100 text-green-800",
   documentation: "bg-blue-100 text-blue-800",
   investigation: "bg-yellow-100 text-yellow-800",
+  suggestion: "bg-teal-100 text-teal-800",
 };
 
 const SCOPE_COLORS: Record<string, string> = {

@@ -15,6 +15,7 @@ const TYPES: LearningType[] = [
   "tip",
   "documentation",
   "investigation",
+  "suggestion",
 ];
 const SCOPES: Scope[] = ["project", "cross-project", "global"];
 const CONFIDENCES: Confidence[] = ["low", "medium", "high"];
@@ -26,7 +27,7 @@ export function registerAddCommand(program: Command): void {
     .option("--title <title>", "Learning title")
     .option("--content <text>", "Learning content")
     .option("--file <path>", "Read content from file")
-    .option("-t, --type <type>", "Type: gotcha, pattern, tip, documentation, investigation")
+    .option("-t, --type <type>", "Type: gotcha, pattern, tip, documentation, investigation, suggestion")
     .option("-s, --scope <scope>", "Scope: project, cross-project, global")
     .option("--tags <tags>", "Tags (comma-separated)")
     .option("-c, --confidence <level>", "Confidence: low, medium, high", "medium")

@@ -8,6 +8,14 @@ interface FilterPanelProps {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
   availableTags: string[];
+  project: string | undefined;
+  onProjectChange: (project: string | undefined) => void;
+  availableProjects: string[];
+}
+
+function getProjectBasename(path: string): string {
+  const parts = path.split("/");
+  return parts[parts.length - 1] || path;
 }
 
 const SCOPES: Array<{ value: Scope | undefined; label: string }> = [
@@ -23,6 +31,7 @@ const TYPES: Array<{ value: LearningType; label: string }> = [
   { value: "tip", label: "Tip" },
   { value: "documentation", label: "Documentation" },
   { value: "investigation", label: "Investigation" },
+  { value: "suggestion", label: "Suggestion" },
 ];
 
 export default function FilterPanel({
@@ -33,6 +42,9 @@ export default function FilterPanel({
   tags,
   onTagsChange,
   availableTags,
+  project,
+  onProjectChange,
+  availableProjects,
 }: FilterPanelProps) {
   const toggleType = (type: LearningType) => {
     if (types.includes(type)) {
@@ -70,6 +82,25 @@ export default function FilterPanel({
           ))}
         </div>
       </div>
+
+      {/* Project Filter */}
+      {availableProjects.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Project</h3>
+          <select
+            value={project ?? ""}
+            onChange={(e) => onProjectChange(e.target.value || undefined)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">All Projects</option>
+            {availableProjects.map((p) => (
+              <option key={p} value={p} title={p}>
+                {getProjectBasename(p)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Type Filter */}
       <div>
@@ -117,12 +148,13 @@ export default function FilterPanel({
       )}
 
       {/* Clear Filters */}
-      {(scope || types.length > 0 || tags.length > 0) && (
+      {(scope || types.length > 0 || tags.length > 0 || project) && (
         <button
           onClick={() => {
             onScopeChange(undefined);
             onTypesChange([]);
             onTagsChange([]);
+            onProjectChange(undefined);
           }}
           className="text-sm text-blue-600 hover:text-blue-800"
         >

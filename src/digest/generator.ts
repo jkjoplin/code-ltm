@@ -13,6 +13,7 @@ const TYPE_PRIORITY: Record<LearningType, number> = {
   gotcha: 5,
   pattern: 4,
   tip: 3,
+  suggestion: 2,
   documentation: 2,
   investigation: 1,
 };

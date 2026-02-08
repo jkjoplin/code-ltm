@@ -7,6 +7,7 @@ export const LearningTypeSchema = z.enum([
   "investigation",
   "documentation",
   "tip",
+  "suggestion",
 ]);
 export type LearningType = z.infer<typeof LearningTypeSchema>;
 
