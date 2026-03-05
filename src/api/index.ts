@@ -388,8 +388,9 @@ app.post(
 app.use(errorHandler);
 
 const PORT = process.env.API_PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`API server running on http://localhost:${PORT}`);
+const HOST = process.env.API_HOST || "127.0.0.1";
+app.listen(Number(PORT), HOST, () => {
+  console.log(`API server running on http://${HOST}:${PORT}`);
 });
 
 export { app };

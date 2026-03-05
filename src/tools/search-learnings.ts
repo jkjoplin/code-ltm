@@ -51,13 +51,16 @@ export async function handleSearchLearnings(
 
     // If include_content is true, fetch full content
     if (input.include_content) {
-      const fullLearnings = learnings.map((summary) => {
-        const full = repo.get(summary.id);
-        return {
-          ...full,
-          relevance_score: summary.relevance_score,
-        };
-      });
+      const fullLearnings = learnings
+        .map((summary) => {
+          const full = repo.get(summary.id);
+          if (!full) return null;
+          return {
+            ...full,
+            relevance_score: summary.relevance_score,
+          };
+        })
+        .filter((l): l is NonNullable<typeof l> => l !== null);
 
       if (input.compact) {
         return {

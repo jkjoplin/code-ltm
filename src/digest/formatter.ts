@@ -174,23 +174,50 @@ function formatJson(
   options: DigestOptions,
   totalMatched: number
 ): DigestResult {
-  const included = learnings.length;
-  const entries = learnings.map((l) => ({
-    id: l.id,
-    title: l.title,
-    content: l.content.length > options.max_content_length
+  const entries: Array<{
+    id: string;
+    title: string;
+    content: string;
+    type: string;
+    confidence: string;
+    tags: string[];
+    score: number;
+  }> = [];
+  let truncated = 0;
+
+  // Estimate overhead for the JSON wrapper (stats, etc.)
+  const overhead = 200;
+  let estimatedSize = overhead;
+
+  for (const l of learnings) {
+    const content = l.content.length > options.max_content_length
       ? l.content.slice(0, options.max_content_length) + "..."
-      : l.content,
-    type: l.type,
-    confidence: l.confidence,
-    tags: l.tags,
-    score: l.score,
-  }));
+      : l.content;
 
-  const truncated = learnings.filter(
-    (l) => l.content.length > options.max_content_length
-  ).length;
+    if (l.content.length > options.max_content_length) {
+      truncated++;
+    }
 
+    const entry = {
+      id: l.id,
+      title: l.title,
+      content,
+      type: l.type,
+      confidence: l.confidence,
+      tags: l.tags,
+      score: l.score,
+    };
+
+    const entryCost = JSON.stringify(entry).length + 10; // +10 for separators/indent
+    if (estimatedSize + entryCost > options.max_chars && entries.length > 0) {
+      break;
+    }
+
+    entries.push(entry);
+    estimatedSize += entryCost;
+  }
+
+  const included = entries.length;
   const stats = buildStats(totalMatched, included, truncated, totalMatched - included, 0, options);
   const result = { learnings: entries, stats };
   const output = JSON.stringify(result, null, 2);

@@ -22,7 +22,7 @@ export function graphRouter(repo: LearningRepository): Router {
     asyncHandler(async (req, res) => {
       const scope = req.query.scope as string | undefined;
       const type = req.query.type as string | undefined;
-      const limit = parseInt(req.query.limit as string) || 100;
+      const limit = Math.max(1, Math.min(500, parseInt(req.query.limit as string) || 100));
 
       // Validate if provided
       if (scope) ScopeSchema.parse(scope);
@@ -43,7 +43,7 @@ export function graphRouter(repo: LearningRepository): Router {
     "/:id",
     asyncHandler(async (req, res) => {
       const id = z.string().uuid().parse(req.params.id);
-      const depth = parseInt(req.query.depth as string) || 2;
+      const depth = Math.max(1, Math.min(5, parseInt(req.query.depth as string) || 2));
 
       const learning = repo.get(id);
       if (!learning) {

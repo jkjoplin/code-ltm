@@ -228,7 +228,7 @@ export class LearningRepository {
           content: input.content,
           type: input.type,
           scope: input.scope,
-          project_path: input.project_path ?? undefined,
+          project_path: input.project_path !== undefined ? (input.project_path ?? undefined) : (existing.project_path ?? undefined),
           tags: input.tags,
           file_references: input.file_references,
           related_ids: input.related_ids,
@@ -243,7 +243,7 @@ export class LearningRepository {
           deprecated_at: input.deprecated_at ?? existing.deprecated_at ?? null,
           access_count: existing.access_count,
           last_accessed_at: existing.last_accessed_at,
-          applies_to: input.applies_to ?? null,
+          applies_to: input.applies_to !== undefined ? input.applies_to : existing.applies_to,
         }
       : {
           id: targetId,
@@ -492,17 +492,21 @@ export class LearningRepository {
   }
 
   delete(id: string, deletedBy = "web-ui"): boolean {
-    // Save version before delete
-    this.saveVersion(id, "delete", deletedBy);
+    const existing = this.get(id);
+    if (!existing) return false;
 
-    // Delete embedding first (vec0 tables don't support ON DELETE CASCADE)
-    this.db.prepare("DELETE FROM learning_embeddings WHERE learning_id = ?").run(id);
-    this.db.prepare("DELETE FROM embedding_metadata WHERE learning_id = ?").run(id);
+    return this.db.transaction(() => {
+      this.saveVersion(id, "delete", deletedBy);
 
-    const result = this.db
-      .prepare("DELETE FROM learnings WHERE id = ?")
-      .run(id);
-    return result.changes > 0;
+      // Delete embedding first (vec0 tables don't support ON DELETE CASCADE)
+      this.db.prepare("DELETE FROM learning_embeddings WHERE learning_id = ?").run(id);
+      this.db.prepare("DELETE FROM embedding_metadata WHERE learning_id = ?").run(id);
+
+      const result = this.db
+        .prepare("DELETE FROM learnings WHERE id = ?")
+        .run(id);
+      return result.changes > 0;
+    })();
   }
 
   list(input: ListOptions): LearningSummary[] {
@@ -692,26 +696,34 @@ export class LearningRepository {
 
     const now = new Date().toISOString();
 
-    // Delete existing embedding if any
-    this.db
-      .prepare("DELETE FROM learning_embeddings WHERE learning_id = ?")
-      .run(id);
-    this.db
-      .prepare("DELETE FROM embedding_metadata WHERE learning_id = ?")
-      .run(id);
+    // Re-check content hash after async gap to avoid overwriting with stale embedding
+    const current = this.db
+      .prepare("SELECT content_hash FROM embedding_metadata WHERE learning_id = ?")
+      .get(id) as { content_hash: string } | undefined;
+    if (current && current.content_hash !== contentHash) {
+      return false; // Content changed during embedding generation, abort
+    }
 
-    // Insert new embedding
-    this.db
-      .prepare("INSERT INTO learning_embeddings (learning_id, embedding) VALUES (?, ?)")
-      .run(id, result.embedding);
+    // Wrap delete+insert in a transaction to prevent partial state
+    this.db.transaction(() => {
+      this.db
+        .prepare("DELETE FROM learning_embeddings WHERE learning_id = ?")
+        .run(id);
+      this.db
+        .prepare("DELETE FROM embedding_metadata WHERE learning_id = ?")
+        .run(id);
 
-    // Insert metadata
-    this.db
-      .prepare(
-        `INSERT INTO embedding_metadata (learning_id, provider, model, dimensions, embedded_at, content_hash)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .run(id, result.provider, result.model, result.dimensions, now, contentHash);
+      this.db
+        .prepare("INSERT INTO learning_embeddings (learning_id, embedding) VALUES (?, ?)")
+        .run(id, result.embedding);
+
+      this.db
+        .prepare(
+          `INSERT INTO embedding_metadata (learning_id, provider, model, dimensions, embedded_at, content_hash)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .run(id, result.provider, result.model, result.dimensions, now, contentHash);
+    })();
 
     return true;
   }
@@ -1146,12 +1158,12 @@ export class LearningRepository {
     const existing = this.get(learningId);
     if (!existing) return null;
 
-    // Save current state before rollback
-    this.saveVersion(learningId, "update", changedBy);
-
     // Update the learning to the target version state
     const now = new Date().toISOString();
     this.db.transaction(() => {
+      // Save current state before rollback (inside transaction)
+      this.saveVersion(learningId, "update", changedBy);
+
       // Update main learning record
       this.db
         .prepare(
@@ -1201,10 +1213,10 @@ export class LearningRepository {
 
       // Update relations
       this.syncRelationsForLearning(learningId, targetVersion.related_ids);
-    })();
 
-    // Save the new state after rollback
-    this.saveVersion(learningId, "update", changedBy);
+      // Save the new state after rollback (inside transaction)
+      this.saveVersion(learningId, "update", changedBy);
+    })();
 
     // Regenerate embedding
     const updated = this.get(learningId);
@@ -1853,9 +1865,9 @@ export class LearningRepository {
 
   private globMatch(filePath: string, pattern: string): boolean {
     // Simple glob matching: supports * and ** patterns
-    // Convert glob to regex
+    // Convert glob to regex — escape all regex-special chars before conversion
     const regexStr = pattern
-      .replace(/\./g, "\\.")
+      .replace(/[.+?^${}()|[\]\\]/g, "\\$&")
       .replace(/\*\*/g, "{{GLOBSTAR}}")
       .replace(/\*/g, "[^/]*")
       .replace(/\{\{GLOBSTAR\}\}/g, ".*");

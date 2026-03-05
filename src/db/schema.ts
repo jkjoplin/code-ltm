@@ -143,7 +143,7 @@ function getMigrations(): Migration[] {
           VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
         END;
 
-        CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE ON learnings BEGIN
+        CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE OF title, content ON learnings BEGIN
           INSERT INTO learnings_fts(learnings_fts, rowid, title, content)
           VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
           INSERT INTO learnings_fts(rowid, title, content)
@@ -422,6 +422,22 @@ function getMigrations(): Migration[] {
         CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_path);
         CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
         ALTER TABLE learnings ADD COLUMN superseded_by TEXT;
+      `,
+    },
+    {
+      name: "009_fix_fts_trigger_scope",
+      sql: `
+        -- Fix FTS5 update trigger to only fire on title/content changes
+        -- Previously fired on ANY update (including access_count), causing
+        -- massive write amplification on read paths
+        DROP TRIGGER IF EXISTS learnings_au;
+
+        CREATE TRIGGER learnings_au AFTER UPDATE OF title, content ON learnings BEGIN
+          INSERT INTO learnings_fts(learnings_fts, rowid, title, content)
+          VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
+          INSERT INTO learnings_fts(rowid, title, content)
+          VALUES (NEW.rowid, NEW.title, NEW.content);
+        END;
       `,
     },
   ];

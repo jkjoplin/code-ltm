@@ -33,8 +33,8 @@ export function learningsRouter(repo: LearningRepository): Router {
       const type = req.query.type as string | undefined;
       const tagsParam = req.query.tags as string | string[] | undefined;
       const projectPath = req.query.project_path as string | undefined;
-      const limit = parseInt(req.query.limit as string) || 20;
-      const offset = parseInt(req.query.offset as string) || 0;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
+      const offset = Math.max(0, parseInt(req.query.offset as string) || 0);
 
       // Parse tags: accept comma-separated or array
       let tags: string[] | undefined;
@@ -55,7 +55,7 @@ export function learningsRouter(repo: LearningRepository): Router {
         type: type as LearningType | undefined,
         tags,
         project_path: projectPath,
-        limit: Math.min(limit, 100),
+        limit,
         offset,
       });
 
@@ -76,7 +76,7 @@ export function learningsRouter(repo: LearningRepository): Router {
       const type = req.query.type as string | undefined;
       const tagsParam = req.query.tags as string | string[] | undefined;
       const projectPath = req.query.project_path as string | undefined;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
       const mode = (req.query.mode as string) || "hybrid";
       const parsedWeight = Number.parseFloat(req.query.semantic_weight as string);
       const semanticWeight = Number.isNaN(parsedWeight)
@@ -104,7 +104,7 @@ export function learningsRouter(repo: LearningRepository): Router {
         type: type as LearningType | undefined,
         tags,
         project_path: projectPath,
-        limit: Math.min(limit, 100),
+        limit,
         mode: mode as "keyword" | "semantic" | "hybrid",
         semantic_weight: semanticWeight,
       });
@@ -134,7 +134,7 @@ export function learningsRouter(repo: LearningRepository): Router {
 
       const text = [title, content].filter(Boolean).join("\n\n");
       const threshold = parseFloat(req.query.threshold as string) || 0.7;
-      const limit = parseInt(req.query.limit as string) || 5;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 5));
 
       const similar = await repo.findSimilar(text, undefined, threshold, limit);
       res.json({ similar, threshold });
@@ -147,7 +147,7 @@ export function learningsRouter(repo: LearningRepository): Router {
     "/promotion-candidates",
     asyncHandler(async (req, res) => {
       const fromScope = req.query.from_scope as string;
-      const limit = parseInt(req.query.limit as string) || 20;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 20));
 
       if (!fromScope) {
         throw createHttpError(400, "from_scope is required");
@@ -370,7 +370,7 @@ export function learningsRouter(repo: LearningRepository): Router {
     "/:id/versions",
     asyncHandler(async (req, res) => {
       const id = z.string().uuid().parse(req.params.id);
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 50));
 
       const learning = repo.get(id);
       if (!learning) {
@@ -441,7 +441,7 @@ export function learningsRouter(repo: LearningRepository): Router {
     asyncHandler(async (req, res) => {
       const id = z.string().uuid().parse(req.params.id);
       const threshold = parseFloat(req.query.threshold as string) || 0.7;
-      const limit = parseInt(req.query.limit as string) || 5;
+      const limit = Math.max(1, Math.min(100, parseInt(req.query.limit as string) || 5));
 
       const learning = repo.get(id);
       if (!learning) {

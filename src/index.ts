@@ -134,11 +134,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "list_learnings":
         return handleListLearnings(repo, args);
       case "search_learnings":
-        return handleSearchLearnings(repo, args);
+        return await handleSearchLearnings(repo, args);
       case "link_learnings":
         return handleLinkLearnings(repo, args);
       case "reembed_learnings":
-        return handleReembedLearnings(repo, args);
+        return await handleReembedLearnings(repo, args);
       case "add_suggestion":
         return handleAddSuggestion(repo, args);
       case "batch_get":
@@ -146,17 +146,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "add_rule":
         return handleAddRule(repo, args);
       case "get_context":
-        return handleGetContext(repo, args);
+        return await handleGetContext(repo, args);
       case "recall":
-        return handleRecall(repo, args);
+        return await handleRecall(repo, args);
       case "get_digest":
-        return handleGetDigest(repo, args);
+        return await handleGetDigest(repo, args);
       case "upsert_learning":
         return handleUpsertLearning(repo, args);
       case "record_learning_feedback":
         return handleRecordLearningFeedback(repo, args);
       case "run_autonomy_cycle":
-        return handleRunAutonomyCycle(repo, args);
+        return await handleRunAutonomyCycle(repo, args);
       case "batch_add":
         return handleBatchAdd(repo, args);
       case "session_init":

@@ -72,7 +72,7 @@ function createTestDb(): Database.Database {
       VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
     END;
 
-    CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE ON learnings BEGIN
+    CREATE TRIGGER IF NOT EXISTS learnings_au AFTER UPDATE OF title, content ON learnings BEGIN
       INSERT INTO learnings_fts(learnings_fts, rowid, title, content)
       VALUES ('delete', OLD.rowid, OLD.title, OLD.content);
       INSERT INTO learnings_fts(rowid, title, content)
