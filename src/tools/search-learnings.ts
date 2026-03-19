@@ -1,4 +1,5 @@
 import type { LearningRepository } from "../db/repository.js";
+import type { Learning } from "../types.js";
 import { SearchLearningsInputSchema } from "../types.js";
 import { zodToJsonSchema } from "./add-learning.js";
 import { toCompactSummary, toCompactLearning, compactJson } from "./compact.js";
@@ -66,7 +67,7 @@ export async function handleSearchLearnings(
               text: compactJson({
                 count: fullLearnings.length,
                 mode: input.mode,
-                learnings: fullLearnings.map((l) => l ? toCompactLearning(l as any) : null),
+                learnings: fullLearnings.map((l) => l ? toCompactLearning(l as Learning) : null),
               }),
             },
           ],
