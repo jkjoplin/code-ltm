@@ -1,0 +1,20 @@
+# code-ltm configuration example
+# Copy to ~/.code-ltm/config.yaml and adjust as needed.
+#
+# Alternatively, set the CODE_LTM_DB environment variable to override the
+# database path without a config file.
+
+database:
+  # Default: ~/.code-ltm/knowledge.db
+  #
+  # iCloud sync (recommended for multi-Mac setups):
+  # Putting the DB in iCloud Drive makes it available on any Mac signed into
+  # the same Apple ID. Make sure iCloud Drive is enabled and the folder exists
+  # before starting the server.
+  #
+  # path: ~/Library/Mobile Documents/com~apple~CloudDocs/code-ltm/knowledge.db
+  path: ~/.code-ltm/knowledge.db
+
+server:
+  # REST API port (default: 3001)
+  # port: 3001

@@ -110,7 +110,11 @@ Or if installed globally:
 
 Data is stored in SQLite at `~/.code-ltm/knowledge.db` by default.
 
-Set `CODE_LTM_DB` environment variable to use a custom path.
+**Configuration file:** Copy `config.yaml.example` to `~/.code-ltm/config.yaml` and adjust paths as needed.
+
+**Environment variable:** Set `CODE_LTM_DB` to override the database path without a config file.
+
+**iCloud sync (multi-Mac):** Set the database path to `~/Library/Mobile Documents/com~apple~CloudDocs/code-ltm/knowledge.db` — the DB will sync automatically across any Mac on the same Apple ID. See `config.yaml.example` for details.
 
 ## Documentation
 
