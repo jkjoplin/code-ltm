@@ -406,6 +406,24 @@ function getMigrations(): Migration[] {
         ON autonomy_candidates(run_id);
       `,
     },
+    {
+      name: "008_sessions_and_superseded",
+      sql: `
+        CREATE TABLE IF NOT EXISTS sessions (
+          id TEXT PRIMARY KEY,
+          project_path TEXT,
+          task TEXT,
+          files_json TEXT,
+          outcome TEXT,
+          started_at TEXT NOT NULL,
+          ended_at TEXT,
+          learnings_added_json TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project_path);
+        CREATE INDEX IF NOT EXISTS idx_sessions_started ON sessions(started_at);
+        ALTER TABLE learnings ADD COLUMN superseded_by TEXT;
+      `,
+    },
   ];
 }
 

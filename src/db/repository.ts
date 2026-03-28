@@ -1681,6 +1681,127 @@ export class LearningRepository {
       );
   }
 
+  // ==================== SESSION METHODS ====================
+
+  createSession(id: string, projectPath?: string, task?: string, files?: string[]): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `INSERT INTO sessions (id, project_path, task, files_json, started_at)
+         VALUES (?, ?, ?, ?, ?)`
+      )
+      .run(id, projectPath ?? null, task ?? null, files ? JSON.stringify(files) : null, now);
+  }
+
+  closeSession(id: string, outcome: string, learningIds: string[]): void {
+    const now = new Date().toISOString();
+    this.db
+      .prepare(
+        `UPDATE sessions SET outcome = ?, ended_at = ?, learnings_added_json = ? WHERE id = ?`
+      )
+      .run(outcome, now, JSON.stringify(learningIds), id);
+  }
+
+  getSession(id: string): SessionRow | null {
+    const row = this.db
+      .prepare("SELECT * FROM sessions WHERE id = ?")
+      .get(id) as SessionRow | undefined;
+    return row ?? null;
+  }
+
+  // ==================== HOT PATHS & PRUNE METHODS ====================
+
+  hotPaths(opts: { limit: number; project_path?: string; type?: LearningType }): Array<LearningSummary & { usefulness_score: number; access_count: number }> {
+    const conditions: string[] = ["l.deprecated = 0"];
+    const params: unknown[] = [];
+
+    if (opts.project_path) {
+      conditions.push("(l.project_path IS NULL OR l.project_path = ?)");
+      params.push(opts.project_path);
+    }
+    if (opts.type) {
+      conditions.push("l.type = ?");
+      params.push(opts.type);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const rows = this.db
+      .prepare(
+        `SELECT l.id, l.title, l.type, l.scope, l.confidence, l.created_at,
+                l.access_count,
+                COALESCE(qm.usefulness_score, 0.5) as usefulness_score
+         FROM learnings l
+         LEFT JOIN learning_quality_metrics qm ON l.id = qm.learning_id
+         ${whereClause}
+         ORDER BY (l.access_count * COALESCE(qm.usefulness_score, 0.5)) DESC
+         LIMIT ?`
+      )
+      .all(...params, opts.limit) as Array<SummaryRow & { usefulness_score: number; access_count: number }>;
+
+    return rows.map((row) => ({
+      ...this.hydrateSummary(row),
+      usefulness_score: row.usefulness_score,
+      access_count: row.access_count,
+    }));
+  }
+
+  markSuperseded(oldId: string, newId: string, _reason?: string): boolean {
+    const oldLearning = this.get(oldId);
+    const newLearning = this.get(newId);
+    if (!oldLearning || !newLearning) return false;
+
+    this.db
+      .prepare("UPDATE learnings SET superseded_by = ? WHERE id = ?")
+      .run(newId, oldId);
+    return true;
+  }
+
+  getPruneCandidates(projectPath?: string): Array<{
+    id: string;
+    title: string;
+    type: string;
+    created_at: string;
+    last_accessed_at: string | null;
+    access_count: number;
+    dismissed_count: number;
+    helpful_count: number;
+    confidence: string;
+  }> {
+    const conditions: string[] = ["l.deprecated = 0"];
+    const params: unknown[] = [];
+
+    if (projectPath) {
+      conditions.push("l.project_path = ?");
+      params.push(projectPath);
+    }
+
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    return this.db
+      .prepare(
+        `SELECT l.id, l.title, l.type, l.created_at, l.last_accessed_at,
+                l.access_count, l.confidence,
+                COALESCE(qm.dismissed_count, 0) as dismissed_count,
+                COALESCE(qm.helpful_count, 0) as helpful_count
+         FROM learnings l
+         LEFT JOIN learning_quality_metrics qm ON l.id = qm.learning_id
+         ${whereClause}
+         ORDER BY l.created_at ASC`
+      )
+      .all(...params) as Array<{
+        id: string;
+        title: string;
+        type: string;
+        created_at: string;
+        last_accessed_at: string | null;
+        access_count: number;
+        dismissed_count: number;
+        helpful_count: number;
+        confidence: string;
+      }>;
+  }
+
   findByFileRefs(filePaths: string[], limit = 20): Learning[] {
     if (filePaths.length === 0) return [];
 
@@ -1918,6 +2039,17 @@ interface VersionRow {
   changed_at: string;
   changed_by: string;
   change_type: string;
+}
+
+export interface SessionRow {
+  id: string;
+  project_path: string | null;
+  task: string | null;
+  files_json: string | null;
+  outcome: string | null;
+  started_at: string;
+  ended_at: string | null;
+  learnings_added_json: string | null;
 }
 
 interface AutonomyRunRow {
