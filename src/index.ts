@@ -45,6 +45,20 @@ import {
   handleRecordLearningFeedback,
   runAutonomyCycleTool,
   handleRunAutonomyCycle,
+  batchAddTool,
+  handleBatchAdd,
+  sessionInitTool,
+  handleSessionInit,
+  taskEndTool,
+  handleTaskEnd,
+  hotPathsTool,
+  handleHotPaths,
+  exportContextTool,
+  handleExportContext,
+  markSupersededTool,
+  handleMarkSuperseded,
+  pruneCandidatesTool,
+  handlePruneCandidates,
 } from "./tools/index.js";
 
 // Load configuration first
@@ -92,6 +106,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       upsertLearningTool,
       recordLearningFeedbackTool,
       runAutonomyCycleTool,
+      batchAddTool,
+      sessionInitTool,
+      taskEndTool,
+      hotPathsTool,
+      exportContextTool,
+      markSupersededTool,
+      pruneCandidatesTool,
     ],
   };
 });
@@ -136,6 +157,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         return handleRecordLearningFeedback(repo, args);
       case "run_autonomy_cycle":
         return handleRunAutonomyCycle(repo, args);
+      case "batch_add":
+        return handleBatchAdd(repo, args);
+      case "session_init":
+        return await handleSessionInit(repo, args);
+      case "task_end":
+        return handleTaskEnd(repo, args);
+      case "hot_paths":
+        return handleHotPaths(repo, args);
+      case "export_context":
+        return handleExportContext(repo, args);
+      case "mark_superseded":
+        return handleMarkSuperseded(repo, args);
+      case "prune_candidates":
+        return handlePruneCandidates(repo, args);
       default:
         return {
           content: [

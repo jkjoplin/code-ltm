@@ -7,9 +7,18 @@ import { graphRouter } from "./routes/graph.js";
 import { autonomyRouter } from "./routes/autonomy.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { EmbeddingService } from "../embeddings/index.js";
-import { LearningSchema } from "../types.js";
+import { LearningSchema, AddLearningInputSchema } from "../types.js";
 import { z } from "zod";
+import { v4 as uuidv4 } from "uuid";
 import { getConfig } from "../config/index.js";
+import type { Request, Response, NextFunction } from "express";
+
+type AsyncHandler = (req: Request, res: Response, next: NextFunction) => Promise<void>;
+function asyncHandler(fn: AsyncHandler) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}
 
 const app = express();
 app.use(cors());
@@ -217,6 +226,163 @@ app.get("/api/projects", (_req, res) => {
   const projects = repo.getProjects();
   res.json(projects);
 });
+
+// ==================== AGENT MARATHON ENDPOINTS ====================
+
+// GET /api/hot - Top N most-accessed learnings
+app.get("/api/hot", (req, res) => {
+  const limit = parseInt(req.query.limit as string) || 10;
+  const projectPath = req.query.project_path as string | undefined;
+  const results = repo.hotPaths({
+    limit: Math.min(limit, 50),
+    project_path: projectPath,
+  });
+  res.json({ count: results.length, learnings: results });
+});
+
+// POST /api/batch_add - Batch add learnings
+app.post(
+  "/api/batch_add",
+  asyncHandler(async (req, res) => {
+    const { learnings: inputs } = z
+      .object({ learnings: z.array(AddLearningInputSchema).min(1).max(50) })
+      .parse(req.body);
+
+    const ids: string[] = [];
+    const titles: string[] = [];
+    for (const input of inputs) {
+      const learning = repo.add(input);
+      ids.push(learning.id);
+      titles.push(learning.title);
+    }
+    res.status(201).json({ added: ids.length, ids, titles });
+  })
+);
+
+// GET /api/prune_candidates - Identify cleanup candidates
+app.get("/api/prune_candidates", (req, res) => {
+  const projectPath = req.query.project_path as string | undefined;
+  const allCandidates = repo.getPruneCandidates(projectPath);
+  const now = Date.now();
+  const DAY_MS = 86400000;
+
+  type PruneReason =
+    | "low_quality"
+    | "stale"
+    | "never_accessed"
+    | "low_confidence_tip";
+  interface PruneCandidate {
+    id: string;
+    title: string;
+    type: string;
+    reason: PruneReason;
+    details: string;
+    created_at: string;
+    last_accessed_at: string | null;
+  }
+
+  const seen = new Set<string>();
+  const results: PruneCandidate[] = [];
+
+  for (const c of allCandidates) {
+    if (c.dismissed_count > c.helpful_count && c.dismissed_count >= 2) {
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        results.push({
+          id: c.id, title: c.title, type: c.type, reason: "low_quality",
+          details: `dismissed ${c.dismissed_count}x vs helpful ${c.helpful_count}x`,
+          created_at: c.created_at, last_accessed_at: c.last_accessed_at,
+        });
+      }
+    }
+  }
+  for (const c of allCandidates) {
+    if (seen.has(c.id)) continue;
+    const ageDays = (now - new Date(c.created_at).getTime()) / DAY_MS;
+    if (ageDays > 90 && c.access_count === 0 && c.type !== "rule") {
+      seen.add(c.id);
+      results.push({
+        id: c.id, title: c.title, type: c.type, reason: "stale",
+        details: `created ${Math.round(ageDays)} days ago, never accessed`,
+        created_at: c.created_at, last_accessed_at: c.last_accessed_at,
+      });
+    }
+  }
+  for (const c of allCandidates) {
+    if (seen.has(c.id)) continue;
+    const ageDays = (now - new Date(c.created_at).getTime()) / DAY_MS;
+    if (ageDays > 30 && c.access_count === 0 && c.type !== "rule" && c.type !== "pattern") {
+      seen.add(c.id);
+      results.push({
+        id: c.id, title: c.title, type: c.type, reason: "never_accessed",
+        details: `created ${Math.round(ageDays)} days ago, never accessed`,
+        created_at: c.created_at, last_accessed_at: c.last_accessed_at,
+      });
+    }
+  }
+  for (const c of allCandidates) {
+    if (seen.has(c.id)) continue;
+    if (c.confidence === "low" && c.type === "tip" && c.access_count < 2) {
+      seen.add(c.id);
+      results.push({
+        id: c.id, title: c.title, type: c.type, reason: "low_confidence_tip",
+        details: `low confidence tip, accessed ${c.access_count}x`,
+        created_at: c.created_at, last_accessed_at: c.last_accessed_at,
+      });
+    }
+  }
+
+  res.json({ count: results.length, candidates: results });
+});
+
+// POST /api/session_init - Initialize session for non-MCP agents
+app.post(
+  "/api/session_init",
+  asyncHandler(async (req, res) => {
+    const input = z
+      .object({
+        task: z.string().optional(),
+        project_path: z.string(),
+        tags: z.array(z.string()).optional(),
+      })
+      .parse(req.body);
+
+    const sessionId = uuidv4();
+    repo.createSession(sessionId, input.project_path, input.task);
+
+    // Rules
+    const allRules = repo.list({ type: "rule", limit: 100, offset: 0, include_deprecated: false });
+    const rulesWithContent = allRules.map((r) => {
+      const full = repo.get(r.id, true);
+      return full
+        ? { id: full.id, title: full.title, content: full.content, scope: full.scope, applies_to: full.applies_to }
+        : { id: r.id, title: r.title, content: "", scope: r.scope, applies_to: null };
+    });
+
+    // Hot
+    const hot = repo.hotPaths({ limit: 5, project_path: input.project_path });
+
+    // Relevant search
+    let relevant: Array<{ id: string; title: string; type: string; confidence: string }> = [];
+    if (input.task) {
+      const searchResults = await repo.hybridSearch({
+        query: input.task,
+        project_path: input.project_path,
+        limit: 10,
+        mode: "hybrid",
+        semantic_weight: 0.5,
+      });
+      relevant = searchResults.map((s) => ({
+        id: s.id, title: s.title, type: s.type, confidence: s.confidence,
+      }));
+      if (searchResults.length > 0) {
+        repo.recordAccess(searchResults.map((s) => s.id));
+      }
+    }
+
+    res.status(201).json({ session_id: sessionId, rules: rulesWithContent, hot, relevant });
+  })
+);
 
 // Error handler (must be last)
 app.use(errorHandler);

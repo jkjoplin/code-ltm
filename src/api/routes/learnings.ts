@@ -10,6 +10,7 @@ import {
   SearchModeSchema,
 } from "../../types.js";
 import type { LearningType } from "../../types.js";
+import { v4 as uuidv4 } from "uuid";
 import { createHttpError } from "../middleware/error-handler.js";
 import { z } from "zod";
 
@@ -162,6 +163,38 @@ export function learningsRouter(repo: LearningRepository): Router {
     })
   );
 
+  // GET /api/learnings/hot - Hot paths (most accessed + useful)
+  // NOTE: Must be BEFORE /:id routes
+  router.get(
+    "/hot",
+    asyncHandler(async (req, res) => {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const projectPath = req.query.project_path as string | undefined;
+      const type = req.query.type as string | undefined;
+
+      if (type) LearningTypeSchema.parse(type);
+
+      const learnings = repo.hotPaths({
+        limit: Math.min(limit, 50),
+        project_path: projectPath,
+        type: type as LearningType | undefined,
+      });
+
+      res.json({ count: learnings.length, learnings });
+    })
+  );
+
+  // GET /api/learnings/prune_candidates - Get prune candidates
+  // NOTE: Must be BEFORE /:id routes
+  router.get(
+    "/prune_candidates",
+    asyncHandler(async (req, res) => {
+      const projectPath = req.query.project_path as string | undefined;
+      const candidates = repo.getPruneCandidates(projectPath);
+      res.json({ candidates });
+    })
+  );
+
   // POST /api/learnings - Create new learning
   router.post(
     "/",
@@ -169,6 +202,70 @@ export function learningsRouter(repo: LearningRepository): Router {
       const input = AddLearningInputSchema.parse(req.body);
       const learning = repo.add(input);
       res.status(201).json(learning);
+    })
+  );
+
+  // POST /api/learnings/batch_add - Add multiple learnings
+  router.post(
+    "/batch_add",
+    asyncHandler(async (req, res) => {
+      const { learnings: inputs } = req.body;
+      if (!Array.isArray(inputs) || inputs.length === 0 || inputs.length > 50) {
+        throw createHttpError(400, "learnings array required (1-50 items)");
+      }
+
+      const ids: string[] = [];
+      const titles: string[] = [];
+      for (const input of inputs) {
+        const parsed = AddLearningInputSchema.parse(input);
+        const learning = repo.add(parsed);
+        ids.push(learning.id);
+        titles.push(learning.title);
+      }
+
+      res.status(201).json({ added: ids.length, ids, titles });
+    })
+  );
+
+  // POST /api/learnings/session_init - Initialize a session
+  router.post(
+    "/session_init",
+    asyncHandler(async (req, res) => {
+      const { project_path: projectPath, files, task } = req.body;
+      if (!projectPath) {
+        throw createHttpError(400, "project_path is required");
+      }
+
+      const sessionId = uuidv4();
+      repo.createSession(sessionId, projectPath, task, files);
+
+      const allRules = repo.list({
+        type: "rule",
+        limit: 100,
+        offset: 0,
+        include_deprecated: false,
+      });
+
+      const hot = repo.hotPaths({ limit: 5, project_path: projectPath });
+
+      let relevant: Array<{ id: string; title: string; type: string }> = [];
+      const query = [task, ...(files ?? [])].filter(Boolean).join(" ");
+      if (query) {
+        const searchResults = await repo.hybridSearch({
+          query,
+          project_path: projectPath,
+          limit: 10,
+          mode: "hybrid",
+          semantic_weight: 0.5,
+        });
+        relevant = searchResults.map((s) => ({
+          id: s.id,
+          title: s.title,
+          type: s.type,
+        }));
+      }
+
+      res.status(201).json({ session_id: sessionId, rules: allRules, hot, relevant });
     })
   );
 

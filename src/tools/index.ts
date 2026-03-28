@@ -21,3 +21,10 @@ export {
   runAutonomyCycleTool,
   handleRunAutonomyCycle,
 } from "./run-autonomy-cycle.js";
+export { batchAddTool, handleBatchAdd } from "./batch-add.js";
+export { sessionInitTool, handleSessionInit } from "./session-init.js";
+export { taskEndTool, handleTaskEnd } from "./task-end.js";
+export { hotPathsTool, handleHotPaths } from "./hot-paths.js";
+export { exportContextTool, handleExportContext } from "./export-context.js";
+export { markSupersededTool, handleMarkSuperseded } from "./mark-superseded.js";
+export { pruneCandidatesTool, handlePruneCandidates } from "./prune-candidates.js";

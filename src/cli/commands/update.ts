@@ -61,7 +61,7 @@ export function registerUpdateCommand(program: Command): void {
           ? opts.tags.split(",").map((t: string) => t.trim())
           : undefined;
         let confidence = opts.confidence as Confidence | undefined;
-        let projectPath = opts.project;
+        const projectPath = opts.project;
 
         // Read content from file if specified
         if (opts.file) {
