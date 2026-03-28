@@ -59,7 +59,7 @@ export function registerSeedCommand(program: Command): void {
           try {
             loadedTemplate = loadBundledTemplate(template);
             sourceName = template;
-          } catch (error) {
+          } catch {
             printError(`Template not found: ${template}`);
             printInfo("Run 'code-ltm-cli seed --list' to see available templates");
             process.exit(1);
