@@ -37,7 +37,11 @@ export async function handleSessionInit(
   });
   const rules = allRules.filter((r) => {
     if (r.scope === "global") return true;
-    return true; // include all non-deprecated rules, project filtering is approximate
+    if (!input.project_path) return true;
+    // Include project-scoped rules only if applies_to matches the requested project
+    const appliesTo = (r as unknown as Record<string, unknown>).applies_to as string | undefined;
+    if (appliesTo && !input.project_path.includes(appliesTo) && !appliesTo.includes(input.project_path)) return false;
+    return true;
   });
 
   // Get full content for rules

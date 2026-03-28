@@ -231,10 +231,10 @@ app.get("/api/projects", (_req, res) => {
 
 // GET /api/hot - Top N most-accessed learnings
 app.get("/api/hot", (req, res) => {
-  const limit = parseInt(req.query.limit as string) || 10;
+  const limit = Math.max(1, Math.min(parseInt(req.query.limit as string) || 10, 50));
   const projectPath = req.query.project_path as string | undefined;
   const results = repo.hotPaths({
-    limit: Math.min(limit, 50),
+    limit,
     project_path: projectPath,
   });
   res.json({ count: results.length, learnings: results });
