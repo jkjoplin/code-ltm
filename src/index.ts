@@ -59,6 +59,7 @@ import {
   handleMarkSuperseded,
   pruneCandidatesTool,
   handlePruneCandidates,
+  coerceArgs,
 } from "./tools/index.js";
 
 // Load configuration first
@@ -119,7 +120,8 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Handle tool calls
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
+  const { name, arguments: rawArgs } = request.params;
+  const args = coerceArgs(rawArgs);
 
   try {
     switch (name) {
