@@ -170,7 +170,9 @@ export const RunAutonomyCycleInputSchema = z.object({
   project_path: z.string().optional(),
   sources: z.array(AutonomySourceSchema).default(["git", "tests", "pr"]),
   maintenance: z.boolean().default(false),
-  dry_run: z.boolean().default(false),
+  // Safe default: omitting dry_run means dry run, matching autonomy.dry_run_default in config —
+  // durable writes require an explicit dry_run: false (RH-A-006).
+  dry_run: z.boolean().default(true),
 });
 export type RunAutonomyCycleInput = z.infer<typeof RunAutonomyCycleInputSchema>;
 
